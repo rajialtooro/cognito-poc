@@ -34,4 +34,4 @@ $ bash run.dev.sh
 
 ### Requires env vars
 
-    * ORCH_URL="url to the coding orchestrator"
+    * FREE_ORCH_URL="url to the coding orchestrator"
