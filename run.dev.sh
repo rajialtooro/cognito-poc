@@ -1,0 +1,1 @@
+PY_ENV="dev" uvicorn main:app --reload
