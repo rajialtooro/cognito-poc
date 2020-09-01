@@ -1,4 +1,0 @@
-
-
-def checkChallenge():
-    return True
