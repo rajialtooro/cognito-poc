@@ -1,8 +1,6 @@
 from pydantic import BaseSettings
 
 # * the app settings
-
-
 class Settings(BaseSettings):
     app_name: str = "The Solution Orchestrator"
     py_env: str
