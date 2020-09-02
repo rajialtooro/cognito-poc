@@ -1,4 +1,4 @@
-import requests
+import requests, json
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
