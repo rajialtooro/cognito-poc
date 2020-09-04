@@ -10,6 +10,11 @@ def sanitize_source_code(code: str, lang: str) -> str:
     return remove_strings(code_without_comments)
 
 
+"""
+Source of method: https://stackoverflow.com/a/2962727
+"""
+
+
 def clean_comments_python(source):
     """
     Returns 'source' minus comments and docstrings.
