@@ -17,20 +17,23 @@ def check_solution(data: ChallengeData) -> str:
     # * Removing any comments or literal strings from the code before looking for the white/black listed words
     sanitized_solution = sanitize_source_code(data.code, challengeData["lang"])
     # * Getting the feedback messages and boolean flags for white/black listed words
-    (
-        result["feedback"]["approvedMissing"],
-        is_approved_solution,
-    ) = solution_contains_approved_words(sanitized_solution, challengeData)
-    (
-        result["feedback"]["illegalFound"],
-        is_illegal_solution,
-    ) = solution_contains_illegal_words(sanitized_solution, challengeData)
+    result_dict = get_solution_feedback_and_flags(sanitized_solution, challengeData)
+    result["feedback"]["approvedMissing"], result["feedback"]["illegalFound"] = (
+        result_dict["missing_msg"],
+        result_dict["illegal_msg"],
+    )
+    is_approved_solution, is_illegal_solution = (
+        result_dict["is_approved_solution"],
+        result_dict["is_illegal_solution"],
+    )
     # * Checking if the solution we received contains the "must-have" words for it to be correct
     if is_approved_solution and not is_illegal_solution:
         # * Prepparing the code, by combining the solution, with the test functions(boiler) and extra classes
         compiler_code = combine_solution_and_tests(data.code, challengeData)
         # * Calling the Free-Coding-Orchestrator to run the Compiler and Analyer(Linter), and combine the results
-        compiler_analyzer_result = run_compiler_and_analyzer(compiler_code, data.lang)
+        compiler_analyzer_result = calling_free_code_orchestrator(
+            compiler_code, data.lang
+        )
         result["linter"], result["compiler"] = (
             compiler_analyzer_result["linter"],
             compiler_analyzer_result["compiler"],
@@ -60,6 +63,21 @@ def get_challenge_data(data: ChallengeData):
         # * Throwing an error if the challenges-service returned an error
         raise SystemExit(sys.exc_info()[0])
     return data
+
+
+# * Method to simplify readability of flow
+# * Calls the methods that check if the solution contains all of the white listed words and non of the balck listed words
+def get_solution_feedback_and_flags(sanitized_solution: str, challengeData):
+    result_dict = {}
+    (
+        result_dict["missing_msg"],
+        result_dict["is_approved_solution"],
+    ) = solution_contains_approved_words(sanitized_solution, challengeData)
+    (
+        result_dict["illegal_msg"],
+        result_dict["is_illegal_solution"],
+    ) = solution_contains_illegal_words(sanitized_solution, challengeData)
+    return result_dict
 
 
 # * Check if the sanitized solution(without comments and strings) contains all of the words in the white-listed words array
@@ -97,7 +115,33 @@ def solution_contains_illegal_words(sanitized_solution: str, challengeData):
     return (feedback_msg, bool(illegal_words_set))
 
 
+"""
+This method replaces the placeholders with the appropriate values for each:
+- {{tests}} --> is replaced by the testing code
+- {{code}} --> is replaced by the user's solution
+- {{classes}} --> is replaced by any extra classes needed for the tests or the solution to run
+"""
+"""
+* The "boiler" code for Java for example will look like this:
+class HelloWorld 
+{ 
+  public static void main(String args[]) 
+  { 
+    {{tests}}
+  } 
+    {{code}}      
+}
+{{classes}}
+"""
+
+
 def combine_solution_and_tests(solution: str, challengeData):
+    # * For Java "Class" exercises specifically, we need to edit the solution slighlty
+    solution = (
+        edit_java_class_solution(solution)
+        if challengeData["lang"] == "java" and solution.strip().startswith("class")
+        else solution
+    )
     solution_with_tests = (
         challengeData["boiler"].replace("{{code}}", solution)
         if "boiler" in challengeData
@@ -117,8 +161,14 @@ def combine_solution_and_tests(solution: str, challengeData):
     return solution_with_tests
 
 
+# * To run and call inner classes in Java within the main method they have to be static
+# * We add it here to prevent confusing the user when solving the challenge
+def edit_java_class_solution(solution: str):
+    return "static " + solution
+
+
 # * Sending a POST request to the "free-coding-orchestrator" which runs the compiler and analyzer
-def run_compiler_and_analyzer(code: str, lang: str):
+def calling_free_code_orchestrator(code: str, lang: str):
     # * Creating the body of the request with programming-language(lang), code-to-compile(code), and run-linter(lint)
     # * lint = False, means to not run the Code-Analyzer
     body = {"lang": lang, "code": code, "lint": False}
