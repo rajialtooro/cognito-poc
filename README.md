@@ -1,9 +1,11 @@
 # The Challenge Checker Service
 
 ## Request:
+
 - Type: <b>POST</b>
 - Route: /solution-orch
 - Body:
+
 ```json
 {
   "lang": "python/java/etc..",
@@ -13,24 +15,35 @@
 ```
 
 ## Result(example):
-- Option 1: 
+
+- Option 1:
+
 ```json
 {
-    "linter": null,
-    "compiler": {
-        "isError": false,
-        "output": "78\n"
-    },
-    "solved": true
+  "solved": true,
+  "feedback": {
+    "approvedMissing": "Code contains all key elements",
+    "illegalFound": ""
+  },
+  "linter": null,
+  "compiler": {
+    "isError": false,
+    "output": "\ncorrect\n"
+  }
 }
 ```
 
 - Option 2(In case solution does not contain "white-listed" words):
+
 ```json
 {
-    "solved": false,
-    "linter": null,
-    "Compiler": null
+  "solved": false,
+  "feedback": {
+    "approvedMissing": "Your code is missing some key-elements, like: for, if",
+    "illegalFound": ""
+  },
+  "linter": null,
+  "compiler": null
 }
 ```
 
@@ -69,5 +82,7 @@ $ bash run.dev.sh
 
 ### Requires env vars
 
-    * FREE_ORCH_URL="url to the coding orchestrator"
-    * CHALLENGES_SERVICE_URL="URL to the challenges service"
+```env
+FREE_ORCH_URL="url to the coding orchestrator"
+CHALLENGES_SERVICE_URL="URL to the challenges service"
+```

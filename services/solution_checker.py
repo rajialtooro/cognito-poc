@@ -3,25 +3,44 @@ import json
 import sys
 from config import settings
 from models.ChallengeData import ChallengeData
+from utils.sanitize_source_code import sanitize_source_code
 
 
 # * Method to check if the given solution gives the desired output(answer found in DB), to be considered as "solved"
 def check_solution(data: ChallengeData) -> str:
     # * Starting with a dictionary that will be filled with the results of the various requests
-    result = {"solved": None, "linter": None, "Compiler": None}
-    # * Default value of the varibale that represents if the user successfully solved the challenge
+    result = {"solved": None, "feedback": {}, "linter": None, "compiler": None}
+    # * Default value of the variable that represents if the user successfully solved the challenge
     solved = False
     # * Getting the challenge from the Database based on the ID we received
     challengeData = get_challenge_data(data)
-    # * Checking if the solution we recieved contains the "must-have" words for it to be correct
-    if solution_contains_approved_words(data.code):
-        # * Prepparing the code, by combining the solution, with the test functions(boiler)
-        compiler_code = data.code + challengeData["boiler"]
+    # * Removing any comments or literal strings from the code before looking for the white/black listed words
+    sanitized_solution = sanitize_source_code(data.code, challengeData["lang"])
+    # * Getting the feedback messages and boolean flags for white/black listed words
+    result_dict = get_solution_feedback_and_flags(sanitized_solution, challengeData)
+    result["feedback"]["approvedMissing"], result["feedback"]["illegalFound"] = (
+        result_dict["missing_msg"],
+        result_dict["illegal_msg"],
+    )
+    is_approved_solution, is_illegal_solution = (
+        result_dict["is_approved_solution"],
+        result_dict["is_illegal_solution"],
+    )
+    # * Checking if the solution we received contains the "must-have" words for it to be correct
+    if is_approved_solution and not is_illegal_solution:
+        # * Prepparing the code, by combining the solution, with the test functions(boiler) and extra classes
+        compiler_code = combine_solution_and_tests(data.code, challengeData)
         # * Calling the Free-Coding-Orchestrator to run the Compiler and Analyer(Linter), and combine the results
-        result = run_compiler_and_analyzer(compiler_code, data.lang)
+        compiler_analyzer_result = calling_free_code_orchestrator(
+            compiler_code, data.lang
+        )
+        result["linter"], result["compiler"] = (
+            compiler_analyzer_result["linter"],
+            compiler_analyzer_result["compiler"],
+        )
         # * Getting the compiler output
         output = result["compiler"]["output"]
-        solved = True if challengeData["answer"] in output else False
+        solved = True if challengeData["answer"] == output.strip() else False
     # * Adding the "solved" key value to True/False, based on what happend above
     result["solved"] = solved
     return result
@@ -30,7 +49,7 @@ def check_solution(data: ChallengeData) -> str:
 # * Function to get the "challenge" object from the database
 def get_challenge_data(data: ChallengeData):
     # * Setting the URL to call the "challenges-service", which contacts the DB
-    # * using a .env file makes sure that the dev/prod environments are called respectivily
+    # * using a .env file makes sure that the dev/prod environments are called respectively
     URL = settings.challenges_service_url + "/{lang}/{id}".format(
         lang=data.lang, id=data.challengeId
     )
@@ -46,21 +65,117 @@ def get_challenge_data(data: ChallengeData):
     return data
 
 
-# TODO: Add behavior for checking "white-labeled" words
-# * Currently(August-31st-2020) no such values exists in the DB
-def solution_contains_approved_words(solution: str):
-    return True
+# * Method to simplify readability of flow
+# * Calls the methods that check if the solution contains all of the white listed words and non of the balck listed words
+def get_solution_feedback_and_flags(sanitized_solution: str, challengeData):
+    result_dict = {}
+    (
+        result_dict["missing_msg"],
+        result_dict["is_approved_solution"],
+    ) = solution_contains_approved_words(sanitized_solution, challengeData)
+    (
+        result_dict["illegal_msg"],
+        result_dict["is_illegal_solution"],
+    ) = solution_contains_illegal_words(sanitized_solution, challengeData)
+    return result_dict
+
+
+# * Check if the sanitized solution(without comments and strings) contains all of the words in the white-listed words array
+# * Return a custom feedback message and a boolean indicating if words were missing
+def solution_contains_approved_words(sanitized_solution: str, challengeData):
+    missing_words_set = {
+        word for word in challengeData["white_list"] if word not in sanitized_solution
+    }
+    feedback_msg = (
+        "Your code is missing some key-elements, like: {0}".format(
+            ", ".join(missing_words_set)
+        )
+        if missing_words_set
+        else "Code contains all key elements"
+    )
+    return (
+        feedback_msg,
+        not bool(missing_words_set),
+    )
+
+
+# * Check if the sanitized solution(without comments and strings) contains any word from the black-list array
+# * Return a custom feedback message and a boolean indicating if any words were found
+def solution_contains_illegal_words(sanitized_solution: str, challengeData):
+    illegal_words_set = {
+        word for word in challengeData["black_list"] if word in sanitized_solution
+    }
+    feedback_msg = (
+        "Your code is contains some terms that are not allowed, like: {0}".format(
+            ", ".join(illegal_words_set)
+        )
+        if illegal_words_set
+        else ""
+    )
+    return (feedback_msg, bool(illegal_words_set))
+
+
+"""
+This method replaces the placeholders with the appropriate values for each:
+- {{tests}} --> is replaced by the testing code
+- {{code}} --> is replaced by the user's solution
+- {{classes}} --> is replaced by any extra classes needed for the tests or the solution to run
+"""
+"""
+* The "boiler" code for Java for example will look like this:
+class HelloWorld 
+{ 
+  public static void main(String args[]) 
+  { 
+    {{tests}}
+  } 
+    {{code}}      
+}
+{{classes}}
+"""
+
+
+def combine_solution_and_tests(solution: str, challengeData):
+    # * For Java "Class" exercises specifically, we need to edit the solution slighlty
+    solution = (
+        edit_java_class_solution(solution)
+        if challengeData["lang"] == "java" and solution.strip().startswith("class")
+        else solution
+    )
+    solution_with_tests = (
+        challengeData["boiler"].replace("{{code}}", solution)
+        if "boiler" in challengeData
+        else solution
+    )
+    solution_with_tests = (
+        solution_with_tests.replace("{{classes}}", challengeData["classes"] or "")
+        if "classes" in challengeData
+        else solution
+    )
+    if "is_main" in challengeData and not challengeData["is_main"]:
+        solution_with_tests = (
+            solution_with_tests.replace("{{tests}}", challengeData["tests"] or "")
+            if "tests" in challengeData
+            else solution
+        )
+    return solution_with_tests
+
+
+# * To run and call inner classes in Java within the main method they have to be static
+# * We add it here to prevent confusing the user when solving the challenge
+def edit_java_class_solution(solution: str):
+    return "static " + solution
 
 
 # * Sending a POST request to the "free-coding-orchestrator" which runs the compiler and analyzer
-def run_compiler_and_analyzer(code: str, lang: str):
+def calling_free_code_orchestrator(code: str, lang: str):
     # * Creating the body of the request with programming-language(lang), code-to-compile(code), and run-linter(lint)
     # * lint = False, means to not run the Code-Analyzer
     body = {"lang": lang, "code": code, "lint": False}
 
     # * Setting the URL of the post request to the free-orchestrator, which calls the Compiler and Analyzer(Linter)
     URL = settings.free_orch_url
-    # * json.dumps() converts the dictionary(body), to a valid JSON, for example truning "False" to "false"
+    # * json.dumps() converts the dictionary(body), to a valid JSON, for example turning "False" to "false"
     DATA = json.dumps(body)
     data = {}
     # * Sending post request and saving the response as response object
