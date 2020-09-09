@@ -84,20 +84,27 @@ def get_solution_feedback_and_flags(non_sanitized_solution: str, challengeData):
 # * Check if the sanitized solution(without comments and strings) contains all of the words in the white-listed words array
 # * Return a custom feedback message and a boolean indicating if words were missing
 def solution_contains_approved_words(sanitized_solution: str, challengeData):
-    missing_words_set = (
-        {word for word in challengeData["white_list"] if word not in sanitized_solution}
-        if challengeData["white_list"] is list
-        else check_keyword_loopx_challeneges(
-            sanitized_solution, challengeData["white_list"]
+    missing_words_set = {}
+    feedback_msg = ""
+    if "white_list" in challengeData:
+        missing_words_set = (
+            {
+                word
+                for word in challengeData["white_list"]
+                if word not in sanitized_solution
+            }
+            if "white_list" in challengeData and challengeData["white_list"] is list
+            else check_keyword_loopx_challeneges(
+                sanitized_solution, challengeData["white_list"]
+            )
         )
-    )
-    feedback_msg = (
-        "Your code is missing some key-elements, like: {0}".format(
-            ", ".join(missing_words_set)
+        feedback_msg = (
+            "Your code is missing some key-elements, like: {0}".format(
+                ", ".join(missing_words_set)
+            )
+            if missing_words_set
+            else "Code contains all key elements"
         )
-        if missing_words_set
-        else "Code contains all key elements"
-    )
     return (
         feedback_msg,
         not bool(missing_words_set),
@@ -125,9 +132,11 @@ def check_keyword_loopx_challeneges(code, keywords):
 # * Check if the sanitized solution(without comments and strings) contains any word from the black-list array
 # * Return a custom feedback message and a boolean indicating if any words were found
 def solution_contains_illegal_words(sanitized_solution: str, challengeData):
-    illegal_words_set = {
-        word for word in challengeData["black_list"] if word in sanitized_solution
-    }
+    illegal_words_set = (
+        {word for word in challengeData["black_list"] if word in sanitized_solution}
+        if "black_list" in challengeData
+        else {}
+    )
     feedback_msg = (
         "Your code is contains some terms that are not allowed, like: {0}".format(
             ", ".join(illegal_words_set)
