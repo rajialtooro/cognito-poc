@@ -3,7 +3,7 @@ import json
 import sys
 from config import settings
 from models.ChallengeData import ChallengeData
-from utils.sanitize_source_code import sanitize_source_code
+from utils.sanitize_source_code import clean_comments, remove_strings
 
 
 # * Method to check if the given solution gives the desired output(answer found in DB), to be considered as "solved"
@@ -14,10 +14,8 @@ def check_solution(data: ChallengeData) -> str:
     solved = False
     # * Getting the challenge from the Database based on the ID we received
     challengeData = get_challenge_data(data)
-    # * Removing any comments or literal strings from the code before looking for the white/black listed words
-    sanitized_solution = sanitize_source_code(data.code, challengeData["lang"])
     # * Getting the feedback messages and boolean flags for white/black listed words
-    result_dict = get_solution_feedback_and_flags(sanitized_solution, challengeData)
+    result_dict = get_solution_feedback_and_flags(data.code, challengeData)
     result["feedback"]["approvedMissing"], result["feedback"]["illegalFound"] = (
         result_dict["missing_msg"],
         result_dict["illegal_msg"],
@@ -67,25 +65,32 @@ def get_challenge_data(data: ChallengeData):
 
 # * Method to simplify readability of flow
 # * Calls the methods that check if the solution contains all of the white listed words and non of the balck listed words
-def get_solution_feedback_and_flags(sanitized_solution: str, challengeData):
+def get_solution_feedback_and_flags(non_sanitized_solution: str, challengeData):
+    # * Removing any comments or literal strings from the code before looking for the white/black listed words
+    sol_wo_comments = clean_comments(non_sanitized_solution, challengeData["lang"])
+    sol_wo_strings_and_comments = remove_strings(sol_wo_comments)
     result_dict = {}
     (
         result_dict["missing_msg"],
         result_dict["is_approved_solution"],
-    ) = solution_contains_approved_words(sanitized_solution, challengeData)
+    ) = solution_contains_approved_words(sol_wo_comments, challengeData)
     (
         result_dict["illegal_msg"],
         result_dict["is_illegal_solution"],
-    ) = solution_contains_illegal_words(sanitized_solution, challengeData)
+    ) = solution_contains_illegal_words(sol_wo_strings_and_comments, challengeData)
     return result_dict
 
 
 # * Check if the sanitized solution(without comments and strings) contains all of the words in the white-listed words array
 # * Return a custom feedback message and a boolean indicating if words were missing
 def solution_contains_approved_words(sanitized_solution: str, challengeData):
-    missing_words_set = {
-        word for word in challengeData["white_list"] if word not in sanitized_solution
-    }
+    missing_words_set = (
+        {word for word in challengeData["white_list"] if word not in sanitized_solution}
+        if challengeData["white_list"] is list
+        else check_keyword_loopx_challeneges(
+            sanitized_solution, challengeData["white_list"]
+        )
+    )
     feedback_msg = (
         "Your code is missing some key-elements, like: {0}".format(
             ", ".join(missing_words_set)
@@ -97,6 +102,24 @@ def solution_contains_approved_words(sanitized_solution: str, challengeData):
         feedback_msg,
         not bool(missing_words_set),
     )
+
+
+# * A methpd to check for keywords in challenges migrated from older platform
+# * A string of key words might look something like this: "for:while;if;next"
+# * Words that have ":" between them is equal to "or", so one of them is needed to appear
+# * ";" is eqaul to "and" which means all of those should exist within the solution
+def check_keyword_loopx_challeneges(code, keywords):
+    missing_elements = []
+    lowercase_solution = code.lower()
+    lowercase_keywords = keywords.lower().split(";")
+    for ands in lowercase_keywords:
+        found_keyword = False
+        for ors in ands.split(":"):
+            if ors in lowercase_solution:
+                found_keyword = True
+        if not found_keyword:
+            missing_elements.append(" or ".join(ands.split(":")))
+    return missing_elements
 
 
 # * Check if the sanitized solution(without comments and strings) contains any word from the black-list array
