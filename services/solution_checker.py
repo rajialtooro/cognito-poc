@@ -238,7 +238,6 @@ def saving_user_challenge_data(
     try:
         result = requests.put(url=URL, data=DATA)
         data = result.json()
-        print("data", data)
     except:
         # * Throwing an error if the courses service failed and returned an error
         raise SystemExit(sys.exc_info()[0])
