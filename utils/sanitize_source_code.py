@@ -10,6 +10,10 @@ def sanitize_source_code(code: str, lang: str) -> str:
     return remove_strings(code_without_comments)
 
 
+def clean_comments(code: str, lang: str):
+    return getattr(sys.modules[__name__], "clean_comments_%s" % lang)(code)
+
+
 """
 Source of method: https://stackoverflow.com/a/2962727
 """
@@ -92,6 +96,10 @@ def clean_comments_c(source):
 
 def clean_comments_cs(source):
     return clean_comments_java(source)
+
+
+def clean_comments_javascript(source):
+    return source
 
 
 def escape_reg_exp(expression):

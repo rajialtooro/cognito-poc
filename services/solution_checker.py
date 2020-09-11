@@ -3,21 +3,19 @@ import json
 import sys
 from config import settings
 from models.ChallengeData import ChallengeData
-from utils.sanitize_source_code import sanitize_source_code
+from utils.sanitize_source_code import clean_comments, remove_strings
 
 
 # * Method to check if the given solution gives the desired output(answer found in DB), to be considered as "solved"
-def check_solution(data: ChallengeData) -> str:
+def check_solution(data: ChallengeData, userId: str) -> str:
     # * Starting with a dictionary that will be filled with the results of the various requests
     result = {"solved": None, "feedback": {}, "linter": None, "compiler": None}
     # * Default value of the variable that represents if the user successfully solved the challenge
     solved = False
     # * Getting the challenge from the Database based on the ID we received
     challengeData = get_challenge_data(data)
-    # * Removing any comments or literal strings from the code before looking for the white/black listed words
-    sanitized_solution = sanitize_source_code(data.code, challengeData["lang"])
     # * Getting the feedback messages and boolean flags for white/black listed words
-    result_dict = get_solution_feedback_and_flags(sanitized_solution, challengeData)
+    result_dict = get_solution_feedback_and_flags(data.code, challengeData)
     result["feedback"]["approvedMissing"], result["feedback"]["illegalFound"] = (
         result_dict["missing_msg"],
         result_dict["illegal_msg"],
@@ -43,6 +41,11 @@ def check_solution(data: ChallengeData) -> str:
         solved = True if challengeData["answer"] == output.strip() else False
     # * Adding the "solved" key value to True/False, based on what happend above
     result["solved"] = solved
+
+    if data.courseId:
+        saving_user_challenge_data(
+            data.courseId, data.challengeId, userId, data.code, solved
+        )
     return result
 
 
@@ -67,44 +70,78 @@ def get_challenge_data(data: ChallengeData):
 
 # * Method to simplify readability of flow
 # * Calls the methods that check if the solution contains all of the white listed words and non of the balck listed words
-def get_solution_feedback_and_flags(sanitized_solution: str, challengeData):
+def get_solution_feedback_and_flags(non_sanitized_solution: str, challengeData):
+    # * Removing any comments or literal strings from the code before looking for the white/black listed words
+    sol_wo_comments = clean_comments(non_sanitized_solution, challengeData["lang"])
+    sol_wo_strings_and_comments = remove_strings(sol_wo_comments)
     result_dict = {}
     (
         result_dict["missing_msg"],
         result_dict["is_approved_solution"],
-    ) = solution_contains_approved_words(sanitized_solution, challengeData)
+    ) = solution_contains_approved_words(sol_wo_comments, challengeData)
     (
         result_dict["illegal_msg"],
         result_dict["is_illegal_solution"],
-    ) = solution_contains_illegal_words(sanitized_solution, challengeData)
+    ) = solution_contains_illegal_words(sol_wo_strings_and_comments, challengeData)
     return result_dict
 
 
 # * Check if the sanitized solution(without comments and strings) contains all of the words in the white-listed words array
 # * Return a custom feedback message and a boolean indicating if words were missing
 def solution_contains_approved_words(sanitized_solution: str, challengeData):
-    missing_words_set = {
-        word for word in challengeData["white_list"] if word not in sanitized_solution
-    }
-    feedback_msg = (
-        "Your code is missing some key-elements, like: {0}".format(
-            ", ".join(missing_words_set)
+    missing_words_set = {}
+    feedback_msg = ""
+    if "white_list" in challengeData:
+        missing_words_set = (
+            {
+                word
+                for word in challengeData["white_list"]
+                if word not in sanitized_solution
+            }
+            if "white_list" in challengeData and challengeData["white_list"] is list
+            else check_keyword_loopx_challeneges(
+                sanitized_solution, challengeData["white_list"]
+            )
         )
-        if missing_words_set
-        else "Code contains all key elements"
-    )
+        feedback_msg = (
+            "Your code is missing some key-elements, like: {0}".format(
+                ", ".join(missing_words_set)
+            )
+            if missing_words_set
+            else "Code contains all key elements"
+        )
     return (
         feedback_msg,
         not bool(missing_words_set),
     )
 
 
+# * A methpd to check for keywords in challenges migrated from older platform
+# * A string of key words might look something like this: "for:while;if;next"
+# * Words that have ":" between them is equal to "or", so one of them is needed to appear
+# * ";" is eqaul to "and" which means all of those should exist within the solution
+def check_keyword_loopx_challeneges(code, keywords):
+    missing_elements = []
+    lowercase_solution = code.lower()
+    lowercase_keywords = keywords.lower().split(";")
+    for ands in lowercase_keywords:
+        found_keyword = False
+        for ors in ands.split(":"):
+            if ors in lowercase_solution:
+                found_keyword = True
+        if not found_keyword:
+            missing_elements.append(" or ".join(ands.split(":")))
+    return missing_elements
+
+
 # * Check if the sanitized solution(without comments and strings) contains any word from the black-list array
 # * Return a custom feedback message and a boolean indicating if any words were found
 def solution_contains_illegal_words(sanitized_solution: str, challengeData):
-    illegal_words_set = {
-        word for word in challengeData["black_list"] if word in sanitized_solution
-    }
+    illegal_words_set = (
+        {word for word in challengeData["black_list"] if word in sanitized_solution}
+        if "black_list" in challengeData
+        else {}
+    )
     feedback_msg = (
         "Your code is contains some terms that are not allowed, like: {0}".format(
             ", ".join(illegal_words_set)
@@ -184,5 +221,24 @@ def calling_free_code_orchestrator(code: str, lang: str):
         data = result.json()
     except:
         # * Throwing an error if the free-coding-orchestrator failed and returned an error
+        raise SystemExit(sys.exc_info()[0])
+    return data
+
+
+def saving_user_challenge_data(
+    courseId: str, challengeId: str, userId: str, lastCode: str, solved: str
+):
+    # * Creating the body of the request with, was the asnwer right(solved), the code user submitted (lastCode)
+    body = {"solved": solved, "lastCode": lastCode, "userId": userId}
+    # * json.dumps() converts the dictionary(body), to a valid JSON, for example turning "False" to "false"
+    DATA = json.dumps(body)
+    data = {}
+    # * Setting the URL of the put request to the courses service, which stores the data of the challenge
+    URL = settings.courses_service_url + "/update/" + courseId + "/" + challengeId
+    try:
+        result = requests.put(url=URL, data=DATA)
+        data = result.json()
+    except:
+        # * Throwing an error if the courses service failed and returned an error
         raise SystemExit(sys.exc_info()[0])
     return data
