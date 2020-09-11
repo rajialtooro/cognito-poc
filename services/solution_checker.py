@@ -7,7 +7,7 @@ from utils.sanitize_source_code import clean_comments, remove_strings
 
 
 # * Method to check if the given solution gives the desired output(answer found in DB), to be considered as "solved"
-def check_solution(data: ChallengeData) -> str:
+def check_solution(data: ChallengeData, userId: str) -> str:
     # * Starting with a dictionary that will be filled with the results of the various requests
     result = {"solved": None, "feedback": {}, "linter": None, "compiler": None}
     # * Default value of the variable that represents if the user successfully solved the challenge
@@ -41,6 +41,11 @@ def check_solution(data: ChallengeData) -> str:
         solved = True if challengeData["answer"] == output.strip() else False
     # * Adding the "solved" key value to True/False, based on what happend above
     result["solved"] = solved
+
+    if data.courseId:
+        saving_user_challenge_data(
+            data.courseId, data.challengeId, userId, data.code, solved
+        )
     return result
 
 
@@ -207,5 +212,25 @@ def calling_free_code_orchestrator(code: str, lang: str):
         data = result.json()
     except:
         # * Throwing an error if the free-coding-orchestrator failed and returned an error
+        raise SystemExit(sys.exc_info()[0])
+    return data
+
+
+def saving_user_challenge_data(
+    courseId: str, challengeId: str, userId: str, lastCode: str, solved: str
+):
+    # * Creating the body of the request with, was the asnwer right(solved), the code user submitted (lastCode)
+    body = {"solved": solved, "lastCode": lastCode, "userId": userId}
+    # * json.dumps() converts the dictionary(body), to a valid JSON, for example turning "False" to "false"
+    DATA = json.dumps(body)
+    data = {}
+    # * Setting the URL of the put request to the courses service, which stores the data of the challenge
+    URL = settings.courses_service_url + "/update/" + courseId + "/" + challengeId
+    try:
+        result = requests.put(url=URL, data=DATA)
+        data = result.json()
+        print("data", data)
+    except:
+        # * Throwing an error if the courses service failed and returned an error
         raise SystemExit(sys.exc_info()[0])
     return data

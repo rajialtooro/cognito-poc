@@ -85,4 +85,6 @@ $ bash run.dev.sh
 ```env
 FREE_ORCH_URL="url to the coding orchestrator"
 CHALLENGES_SERVICE_URL="URL to the challenges service"
+AUTH_SERVICE_URL="url to the authentication service"
+COURSES_SERVICE_URL="url to the courses service"
 ```

@@ -98,5 +98,9 @@ def clean_comments_cs(source):
     return clean_comments_java(source)
 
 
+def clean_comments_javascript(source):
+    return source
+
+
 def escape_reg_exp(expression):
     return re.sub("/[.*+?^${}()|[\]\\]/g", "\\$&", expression)

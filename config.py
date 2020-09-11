@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     py_env: str
     free_orch_url: str
     challenges_service_url: str
+    courses_service_url: str
+    auth_service_url: str
 
     class Config:
         env_file = ".env"
