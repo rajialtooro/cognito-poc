@@ -9,7 +9,7 @@ from utils.sanitize_source_code import clean_comments, remove_strings
 # * Method to check if the given solution gives the desired output(answer found in DB), to be considered as "solved"
 def check_solution(data: ChallengeData, userId: str) -> str:
     # * Starting with a dictionary that will be filled with the results of the various requests
-    result = {"solved": None, "feedback": {}, "linter": None, "compiler": None}
+    result = {"solved": None, "feedback": {}, "linter": "", "compiler": ""}
     # * Default value of the variable that represents if the user successfully solved the challenge
     solved = False
     # * Getting the challenge from the Database based on the ID we received
@@ -28,7 +28,8 @@ def check_solution(data: ChallengeData, userId: str) -> str:
     if is_approved_solution and not is_illegal_solution:
         # * Prepparing the code, by combining the solution, with the test functions(boiler) and extra classes
         compiler_code = combine_solution_and_tests(data.code, challengeData)
-        # * Calling the Free-Coding-Orchestrator to run the Compiler and Analyer(Linter), and combine the results
+        # * Calling the Free-Coding-Orchestrator to run the Compiler
+        #  and Analyer(Linter), and combine the results
         compiler_analyzer_result = calling_free_code_orchestrator(
             compiler_code, data.lang
         )
@@ -36,17 +37,58 @@ def check_solution(data: ChallengeData, userId: str) -> str:
             compiler_analyzer_result["linter"],
             compiler_analyzer_result["compiler"],
         )
+        result["linter"]["violations"] = (
+            update_linter_line_values(
+                result["linter"]["violations"], compiler_code, data
+            )
+            if result["linter"]["violations"] != None
+            else result["linter"]
+        )
         # * Getting the compiler output
-        output = result["compiler"]["output"]
+        output = (
+            result["compiler"]["output"] if result["compiler"]["output"] != None else ""
+        )
         solved = True if challengeData["answer"] == output.strip() else False
     # * Adding the "solved" key value to True/False, based on what happend above
     result["solved"] = solved
 
-    if data.courseId:
+    if data.toSubmit and data.courseId:
         saving_user_challenge_data(
             data.courseId, data.challengeId, userId, data.code, solved
         )
     return result
+
+
+def update_linter_line_values(
+    violations, solution_with_tests, challenge_data: ChallengeData
+):
+    line_diff = calc_line_diff(challenge_data, solution_with_tests)
+    for violation in violations:
+        violation["line"] = violation["line"] - line_diff
+    return violations
+
+
+def calc_line_diff(challenge_data: ChallengeData, solution_with_tests):
+    arr_of_new_lines = solution_with_tests.split("\n")
+    line_diff = 0
+    for line_break in arr_of_new_lines:
+        reached_func_name = (
+            reached_func_name_curly_brackets(line_break, challenge_data.code)
+            if challenge_data.lang in {"java", "cs", "c"}
+            else reached_func_name_tabs(line_break, challenge_data.code)
+        )
+        if reached_func_name:
+            break
+        line_diff += 1
+    return line_diff
+
+
+def reached_func_name_curly_brackets(sol_with_tests, only_sol):
+    return sol_with_tests.split("{")[0].strip() == only_sol.split("{")[0].strip()
+
+
+def reached_func_name_tabs(sol_with_tests, only_sol):
+    return sol_with_tests.split(":")[0].strip() == only_sol.split(":")[0].strip()
 
 
 # * Function to get the "challenge" object from the database
@@ -104,11 +146,11 @@ def solution_contains_approved_words(sanitized_solution: str, challengeData):
             )
         )
         feedback_msg = (
-            "Your code is missing some key-elements, like: {0}".format(
+            "Your code is missing some required-elements, like: {0}".format(
                 ", ".join(missing_words_set)
             )
             if missing_words_set
-            else "Code contains all key elements"
+            else "Code contains all required elements"
         )
     return (
         feedback_msg,
@@ -208,7 +250,7 @@ def edit_java_class_solution(solution: str):
 def calling_free_code_orchestrator(code: str, lang: str):
     # * Creating the body of the request with programming-language(lang), code-to-compile(code), and run-linter(lint)
     # * lint = False, means to not run the Code-Analyzer
-    body = {"lang": lang, "code": code, "lint": False}
+    body = {"lang": lang, "code": code, "lint": True}
 
     # * Setting the URL of the post request to the free-orchestrator, which calls the Compiler and Analyzer(Linter)
     URL = settings.free_orch_url
