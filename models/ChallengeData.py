@@ -7,3 +7,4 @@ class ChallengeData(BaseModel):
     code: str
     challengeId: str
     courseId: Optional[str]
+    toSubmit: Optional[bool]

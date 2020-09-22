@@ -47,6 +47,31 @@
 }
 ```
 
+- Option 3(In case the solution has all required-elements, but has a syntax error)
+```json
+{
+    "solved": false,
+    "feedback": {
+        "approvedMissing": "Code contains all required elements",
+        "illegalFound": ""
+    },
+    "linter": {
+        "violations": [
+            {
+                "line": 3,
+                "column": 20,
+                "id": "; expected"
+            }
+        ],
+        "exitCode": 2
+    },
+    "compiler": {
+        "isError": false,
+        "output": null
+    }
+}
+```
+
 ## Technologies!
 
 - The service will be written in [Python](https://python.org/) 3.6+.
