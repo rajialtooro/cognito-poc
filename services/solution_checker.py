@@ -95,7 +95,7 @@ def reached_func_name_tabs(sol_with_tests, only_sol):
 def get_challenge_data(data: ChallengeData):
     # * Setting the URL to call the "challenges-service", which contacts the DB
     # * using a .env file makes sure that the dev/prod environments are called respectively
-    URL = settings.challenges_service_url + "/{lang}/{id}".format(
+    URL = settings.challenges_service_url + "/{id}?lang={lang}".format(
         lang=data.lang, id=data.challengeId
     )
     data = {}
