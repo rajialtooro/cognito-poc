@@ -62,9 +62,14 @@ def check_solution(data: ChallengeData, userId: str) -> str:
 def update_linter_line_values(
     violations, solution_with_tests, challenge_data: ChallengeData
 ):
-    line_diff = calc_line_diff(challenge_data, solution_with_tests)
-    for violation in violations:
-        violation["line"] = violation["line"] - line_diff
+    if (
+        challenge_data.lang == "c"
+        or challenge_data.lang == "cs"
+        or challenge_data.lang == "java"
+    ) and "main" not in challenge_data.code:
+        line_diff = calc_line_diff(challenge_data, solution_with_tests)
+        for violation in violations:
+            violation["line"] = violation["line"] - line_diff
     return violations
 
 
@@ -140,7 +145,8 @@ def solution_contains_approved_words(sanitized_solution: str, challengeData):
                 for word in challengeData["white_list"]
                 if word not in sanitized_solution
             }
-            if "white_list" in challengeData and challengeData["white_list"] is list
+            if "white_list" in challengeData
+            and type(challengeData["white_list"]) is list
             else check_keyword_loopx_challeneges(
                 sanitized_solution, challengeData["white_list"]
             )
