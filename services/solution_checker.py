@@ -54,7 +54,12 @@ def check_solution(data: ChallengeData, userId: str) -> str:
 
     if data.toSubmit and data.courseId:
         saving_user_challenge_data(
-            data.courseId, data.challengeId, userId, data.code, solved
+            data.courseId,
+            data.challengeId,
+            userId,
+            data.code,
+            solved,
+            data.time_spent,
         )
     return result
 
@@ -278,10 +283,20 @@ def calling_free_code_orchestrator(code: str, lang: str):
 
 
 def saving_user_challenge_data(
-    courseId: str, challengeId: str, userId: str, lastCode: str, solved: str
+    courseId: str,
+    challengeId: str,
+    userId: str,
+    lastCode: str,
+    solved: str,
+    time_spent: int,
 ):
     # * Creating the body of the request with, was the asnwer right(solved), the code user submitted (lastCode)
-    body = {"solved": solved, "lastCode": lastCode, "userId": userId}
+    body = {
+        "solved": solved,
+        "lastCode": lastCode,
+        "userId": userId,
+        "time_spent": time_spent,
+    }
     # * json.dumps() converts the dictionary(body), to a valid JSON, for example turning "False" to "false"
     DATA = json.dumps(body)
     data = {}

@@ -10,7 +10,10 @@
 {
   "lang": "python/java/etc..",
   "code": "solution code goes here",
-  "challengeId": "UID of challenge"
+  "challengeId": "UID of challenge",
+  "courseId": "UID of course",
+  "toSubmit": true || false,
+  "time_spent: time it took to solved
 }
 ```
 

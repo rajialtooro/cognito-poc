@@ -8,3 +8,4 @@ class ChallengeData(BaseModel):
     challengeId: str
     courseId: Optional[str]
     toSubmit: Optional[bool]
+    time_spent: Optional[int] = 0
