@@ -228,14 +228,7 @@ def combine_solution_and_tests(solution: str, challengeData):
         else solution
     )
     solution_with_tests = (
-        challengeData["boiler"].replace("{{code}}", solution)
-        if "boiler" in challengeData
-        else solution
-    )
-    solution_with_tests = (
-        solution_with_tests.replace("{{classes}}", challengeData["classes"] or "")
-        if "classes" in challengeData
-        else solution
+        challengeData["boiler"] if "boiler" in challengeData else solution
     )
     if "is_main" in challengeData and not challengeData["is_main"]:
         solution_with_tests = (
@@ -243,6 +236,17 @@ def combine_solution_and_tests(solution: str, challengeData):
             if "tests" in challengeData
             else solution
         )
+    elif "is_main" in challengeData and challengeData["is_main"]:
+        solution_with_tests = solution_with_tests.replace("{{tests}}", solution)
+        solution_with_tests = solution_with_tests.replace("{{code}}", "")
+
+    solution_with_tests = solution_with_tests.replace("{{code}}", solution)
+    solution_with_tests = (
+        solution_with_tests.replace("{{classes}}", challengeData["classes"] or "")
+        if "classes" in challengeData
+        else solution
+    )
+    print(solution_with_tests)
     return solution_with_tests
 
 
