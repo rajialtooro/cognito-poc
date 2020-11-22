@@ -114,8 +114,9 @@ def get_challenge_data(data: ChallengeData):
         result = requests.get(url=URL, params=None)
         # * Parsing the data as JSON
         data = result.json()
-    except:
+    except ValueError:
         # * Throwing an error if the challenges-service returned an error
+        print("Decoding JSON has failed", data)
         raise SystemExit(sys.exc_info()[0])
     return data
 
