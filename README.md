@@ -13,7 +13,8 @@
   "challengeId": "UID of challenge",
   "courseId": "UID of course",
   "toSubmit": true || false,
-  "time_spent: time it took to solved
+  "time_spent: time it took to solved,
+  "lint": true || false
 }
 ```
 
