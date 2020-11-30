@@ -31,10 +31,12 @@ def check_solution(data: ChallengeData, userId: str) -> str:
         # * Calling the Free-Coding-Orchestrator to run the Compiler
         #  and Analyer(Linter), and combine the results
         compiler_analyzer_result = calling_free_code_orchestrator(
-            compiler_code, data.lang
+            compiler_code, data.lang, data.lint
         )
         result["linter"], result["compiler"] = (
-            compiler_analyzer_result["linter"],
+            compiler_analyzer_result["linter"]
+            if compiler_analyzer_result["linter"] != None
+            else {"violations": []},
             compiler_analyzer_result["compiler"],
         )
         result["linter"]["violations"] = (
@@ -265,11 +267,10 @@ def edit_java_class_solution(solution: str):
 
 
 # * Sending a POST request to the "free-coding-orchestrator" which runs the compiler and analyzer
-def calling_free_code_orchestrator(code: str, lang: str):
+def calling_free_code_orchestrator(code: str, lang: str, lint: bool):
     # * Creating the body of the request with programming-language(lang), code-to-compile(code), and run-linter(lint)
     # * lint = False, means to not run the Code-Analyzer
-    body = {"lang": lang, "code": code, "lint": True}
-
+    body = {"lang": lang, "code": code, "lint": lint}
     # * Setting the URL of the post request to the free-orchestrator, which calls the Compiler and Analyzer(Linter)
     URL = settings.free_orch_url
     # * json.dumps() converts the dictionary(body), to a valid JSON, for example turning "False" to "false"
