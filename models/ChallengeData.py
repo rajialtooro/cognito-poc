@@ -11,3 +11,4 @@ class ChallengeData(BaseModel):
     time_spent: Optional[int] = 0
     lint: Optional[bool] = False
     title: Optional[str]
+
