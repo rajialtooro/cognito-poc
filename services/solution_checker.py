@@ -56,12 +56,9 @@ def check_solution(data: ChallengeData, userId: str) -> str:
 
     if data.toSubmit and data.courseId:
         saving_user_challenge_data(
-            data.courseId,
-            data.challengeId,
+            data,
             userId,
-            data.code,
             solved,
-            data.time_spent,
         )
     return result
 
@@ -286,26 +283,23 @@ def calling_free_code_orchestrator(code: str, lang: str, lint: bool):
     return data
 
 
-def saving_user_challenge_data(
-    courseId: str,
-    challengeId: str,
-    userId: str,
-    lastCode: str,
-    solved: str,
-    time_spent: int,
-):
+def saving_user_challenge_data(data: ChallengeData, userId: str, solved: bool):
     # * Creating the body of the request with, was the asnwer right(solved), the code user submitted (lastCode)
     body = {
         "solved": solved,
-        "lastCode": lastCode,
+        "lastCode": data.code,
         "userId": userId,
-        "time_spent": time_spent,
+        "time_spent": data.time_spent,
+        "challenge_title": data.title,
     }
+    courseID = data.courseId
+    challengeID = data.challengeId
     # * json.dumps() converts the dictionary(body), to a valid JSON, for example turning "False" to "false"
     DATA = json.dumps(body)
     data = {}
     # * Setting the URL of the put request to the courses service, which stores the data of the challenge
-    URL = settings.courses_service_url + "update/" + courseId + "/" + challengeId
+    URL = settings.courses_service_url + "/update/" + courseID + "/" + challengeID
+
     try:
         result = requests.put(url=URL, data=DATA)
         data = result.json()
