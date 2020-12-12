@@ -84,7 +84,7 @@ def update_linter_line_values(
         for violation in violations:
             violation["line"] = violation["line"] - sol_start_line
     elif is_main:
-        if " main(" in challenge_data.code.lower():
+        if " main(" in challenge_data.code.lower() and challenge_data.lang != "c":
             violations = unnecessary_main_or_class(challenge_data, violations)
         else:
             sol_start_line = 0
