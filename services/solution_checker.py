@@ -41,7 +41,10 @@ def check_solution(data: ChallengeData, userId: str) -> str:
         )
         result["linter"]["violations"] = (
             update_linter_line_values(
-                result["linter"]["violations"], compiler_code, data
+                result["linter"]["violations"],
+                compiler_code,
+                data,
+                challengeData["is_main"],
             )
             if result["linter"]["violations"] != None
             else result["linter"]
@@ -64,16 +67,58 @@ def check_solution(data: ChallengeData, userId: str) -> str:
 
 
 def update_linter_line_values(
-    violations, solution_with_tests, challenge_data: ChallengeData
+    violations, solution_with_tests, challenge_data: ChallengeData, is_main: bool
 ):
+    challenge_code_lst = challenge_data.code.split("\n")
+    challenge_code_lst_length = len(challenge_code_lst)
     if (
         challenge_data.lang == "c"
         or challenge_data.lang == "cs"
         or challenge_data.lang == "java"
-    ) and "main" not in challenge_data.code:
-        line_diff = calc_line_diff(challenge_data, solution_with_tests)
+    ) and not is_main:
+        sol_start_line = calc_line_diff(challenge_data, solution_with_tests)
+        sol_end_line = sol_start_line + challenge_code_lst_length - 1
+        for violation in list(violations):
+            if violation["line"] < sol_start_line or violation["line"] > sol_end_line:
+                violations.remove(violation)
         for violation in violations:
-            violation["line"] = violation["line"] - line_diff
+            violation["line"] = violation["line"] - sol_start_line
+    elif is_main:
+        if " main(" in challenge_data.code.lower():
+            violations = unnecessary_main_or_class(challenge_data, violations)
+        else:
+            sol_start_line = 0
+            for idx, line in enumerate(solution_with_tests.split("\n")):
+                if line.strip() == challenge_code_lst[0].strip():
+                    sol_start_line = idx
+                    break
+            sol_end_line = sol_start_line + challenge_code_lst_length - 1
+            for violation in list(violations):
+                if (
+                    violation["line"] < sol_start_line
+                    or violation["line"] > sol_end_line
+                ):
+                    violations.remove(violation)
+            for violation in violations:
+                violation["line"] = violation["line"] - (sol_start_line + 1)
+    return violations
+
+
+def unnecessary_main_or_class(challenge_data: ChallengeData, violations):
+    code_list = challenge_data.code.lower().split("\n")
+    line = 0
+    for idx, line in enumerate(code_list):
+        if "main" in line:
+            line = idx
+            break
+    violations.clear()
+    violations.append(
+        {
+            "line": line,
+            "column": 0,
+            "id": "No need to create a 'Main' method, or a class",
+        }
+    )
     return violations
 
 
