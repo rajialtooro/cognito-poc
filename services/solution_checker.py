@@ -153,8 +153,14 @@ def get_challenge_data(data: ChallengeData):
     # * Setting the URL to call the "challenges-service", which contacts the DB
     # * using a .env file makes sure that the dev/prod environments are called respectively
     print("Challenge request data:", data)
-    URL = settings.challenges_service_url + "/challenges/{id}?lang={lang}".format(
-        lang=data.lang, id=data.challengeId
+    URL = (
+        settings.challenges_service_url
+        + "/challenges/{id}?lang={lang}".format(lang=data.lang, id=data.challengeId)
+        if data is ChallengeData
+        else settings.challenges_service_url
+        + "/challenges/{id}?lang={lang}".format(
+            lang=data["lang"], id=data["challengeId"]
+        )
     )
     print("Request URL:", URL)
     data = {}

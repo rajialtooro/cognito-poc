@@ -16,44 +16,50 @@ def check_assignment_solution(
     assignment: Assignment, assignment_data: AssignmentData, authorization
 ):
     # * Getting the challenges from the Database based on the IDs we received
-    challenges_data = get_challenges_data(assignment.assignmentChallenges)
+    challenges_data = get_challenges_data(assignment["assignmentChallenges"])
     # * Creating a list of challenge IDs from the challengeObjects we have
     challenge_ids = map_challenge_data_to_ids(challenges_data)
     # * Getting the user's submitted solutions
-    submissions_data = get_user_assignment_submissions(assignment_data, challenge_ids)
+    submissions_data = get_user_assignment_submissions(
+        assignment_data, challenge_ids, authorization
+    )
     # * Creating an array of all of the student-solution with the testing code
     submissions_compiler_code = get_submissions_with_compiler_testing_code(
         submissions_data, challenges_data
     )
 
     assignment_results = []
-    for solution, challange_data, assignment_chall, submission in zip(
+    for solution, challenge_data, assignment_chall, submission in zip(
         submissions_compiler_code,
         challenges_data,
-        assignment.assignmentChallenges,
+        assignment["assignmentChallenges"],
         submissions_data,
     ):
         data = calling_free_code_orchestrator(
             solution,
-            challange_data["lang"],
+            challenge_data["lang"],
             False,
-            challange_data["input"] if challange_data["input"] != None else "",
+            challenge_data["input"]
+            if "input" in challenge_data and challenge_data["input"] != None
+            else "",
         )
         # * Getting the compiler output
         output = (
             data["compiler"]["output"] if data["compiler"]["output"] != None else ""
         )
-        solved = True if challange_data["answer"] == output.strip() else False
+        solved = True if challenge_data["answer"] == output.strip() else False
         grade = assignment_chall["grade"] if solved else 0
         assignment_results.append(
             {
                 "solved": solved,
-                "challenge_id": challange_data["challenge_id"],
+                "challenge_id": challenge_data["challenge_id"],
                 "grade": grade,
                 "result": submission["result"],
             }
         )
-    submit_assignment_results(assignment_results, assignment, assignment_data)
+    submit_assignment_results(
+        assignment_results, assignment, assignment_data, authorization
+    )
 
 
 def map_challenge_data_to_ids(challenges_data: list):
@@ -82,17 +88,19 @@ def get_challenges_data(chall_id_arr):
 
 
 def get_user_assignment_submissions(
-    assignment_data: AssignmentData, challenge_ids: list
+    assignment_data: AssignmentData, challenge_ids: list, authorization
 ):
     user_submissions = []
     for id in challenge_ids:
-        data = get_user_assignment_challenges(assignment_data, id)
+        data = get_user_assignment_challenges(assignment_data, id, authorization)
         user_submissions.append(data)
     return user_submissions
 
 
 # * Route: /courses-svc/courseId/assignments/assignmentId/userId/challengeId)
-def get_user_assignment_challenges(assignment_data: AssignmentData, challenge_id):
+def get_user_assignment_challenges(
+    assignment_data: AssignmentData, challenge_id, authorization
+):
     # * using a .env file makes sure that the dev/prod environments are called respectively
     URL = (
         settings.courses_service_url
@@ -107,14 +115,16 @@ def get_user_assignment_challenges(assignment_data: AssignmentData, challenge_id
     data = {}
     # * Sending get request and saving the response as response object
     try:
-        result = requests.get(url=URL, params=None)
+        result = requests.get(
+            url=URL, params=None, headers={"Authorization": authorization}
+        )
         # * Parsing the data as JSON
         data = result.json()
     except ValueError:
         # * Throwing an error if the challenges-service returned an error
         print("Decoding JSON has failed", data)
         raise SystemExit(sys.exc_info()[0])
-    return data
+    return data["data"]
 
 
 def submit_assignment_results(
@@ -123,7 +133,7 @@ def submit_assignment_results(
     assignment_data: AssignmentData,
     authorization,
 ):
-    submittedAt = str(datetime.datetime.now)
+    submittedAt = str(datetime.datetime.now())
     status = "submitted"
     grade_total = 0
     for challenge_result in assignment_results:
@@ -141,6 +151,7 @@ def submit_assignment_results(
         }
         grade_total += challenge_result["grade"]
         # * Sending get request and saving the response as response object
+        data = {}
         try:
             result = requests.post(
                 url=URL,
@@ -152,9 +163,9 @@ def submit_assignment_results(
             data = result.json()
         except ValueError:
             # * Throwing an error if the challenges-service returned an error
-            print("Decoding JSON has failed", data)
+            print("Decoding JSON has failed", data, result)
             raise SystemExit(sys.exc_info()[0])
-    submit_user_assignment(assignment_data, grade_total, authorization)
+    submit_user_assignment(assignment_data, grade_total, submittedAt, authorization)
 
 
 # Call submit user assignment, status="submitted" and date, grade= sum of challenge grades

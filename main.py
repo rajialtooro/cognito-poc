@@ -43,6 +43,6 @@ def check_solution_controller(
 def check_assignment_controller(
     assignment_data: AssignmentData, authorization: Optional[str] = Header(None)
 ):
-    assignment = get_assignemnt(assignment_data)
+    assignment = get_assignemnt(assignment_data, authorization)
     check_assignment_solution(assignment, assignment_data, authorization)
     return {"result": "Solution is being checked"}
