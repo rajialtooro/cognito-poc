@@ -1,6 +1,13 @@
-# The Challenge Checker Service
+# The Solutions Checking and Orchestrating Service
 
-## Request:
+### APIs:
+
+- [Single challlenge submission](#challenge)
+- [Assignment submission](#assignment)
+
+## <a name="challenge"></a>Check a single challenge:
+
+### Request:
 
 - Type: <b>POST</b>
 - Route: /solution-orch
@@ -18,7 +25,7 @@
 }
 ```
 
-## Result(example):
+### Result(example):
 
 - Option 1:
 
@@ -52,27 +59,53 @@
 ```
 
 - Option 3(In case the solution has all required-elements, but has a syntax error)
+
 ```json
 {
-    "solved": false,
-    "feedback": {
-        "approvedMissing": "Code contains all required elements",
-        "illegalFound": ""
-    },
-    "linter": {
-        "violations": [
-            {
-                "line": 3,
-                "column": 20,
-                "id": "; expected"
-            }
-        ],
-        "exitCode": 2
-    },
-    "compiler": {
-        "isError": false,
-        "output": null
-    }
+  "solved": false,
+  "feedback": {
+    "approvedMissing": "Code contains all required elements",
+    "illegalFound": ""
+  },
+  "linter": {
+    "violations": [
+      {
+        "line": 3,
+        "column": 20,
+        "id": "; expected"
+      }
+    ],
+    "exitCode": 2
+  },
+  "compiler": {
+    "isError": false,
+    "output": null
+  }
+}
+```
+
+## <a name="assignment"></a>Submit an assignment for checking:
+
+### Request:
+
+- Type: <b>POST</b>
+- Route: /solution-orch/assignment/submit
+- Headers: Auth headers required
+- Body:
+
+```json
+{
+  "course_id": "UID of course",
+  "assignment_id": "UID of assignment",
+  "user_id": "UUID of user"
+}
+```
+
+### Result(example):
+
+```json
+{
+  "result": "Solution is being checked"
 }
 ```
 
