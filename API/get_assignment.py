@@ -15,7 +15,6 @@ def get_assignemnt(assignment_data: AssignmentData, authorization) -> Assignment
             assignment_id=assignment_data.assignment_id,
         )
     )
-    print("Request URL:", URL)
     data = {}
     # * Sending get request and saving the response as response object
     try:

@@ -1,5 +1,5 @@
 import requests, json
-from fastapi import FastAPI, Header
+from fastapi import FastAPI, Header, BackgroundTasks
 from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
@@ -41,8 +41,12 @@ def check_solution_controller(
 # * POST request to run the assignment checking flow
 @app.post("/solution-orch/assignment/submit", status_code=200)
 def check_assignment_controller(
-    assignment_data: AssignmentData, authorization: Optional[str] = Header(None)
+    assignment_data: AssignmentData,
+    background_tasks: BackgroundTasks,
+    authorization: Optional[str] = Header(None),
 ):
     assignment = get_assignemnt(assignment_data, authorization)
-    check_assignment_solution(assignment, assignment_data, authorization)
+    background_tasks.add_task(
+        check_assignment_solution, assignment, assignment_data, authorization
+    )
     return {"result": "Solution is being checked"}

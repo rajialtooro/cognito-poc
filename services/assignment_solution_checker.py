@@ -111,7 +111,6 @@ def get_user_assignment_challenges(
             challenge_id=challenge_id,
         )
     )
-    print("Request URL:", URL)
     data = {}
     # * Sending get request and saving the response as response object
     try:
@@ -147,7 +146,7 @@ def submit_assignment_results(
             "result": challenge_result["result"],
             "submittedAt": submittedAt,
             "status": status,
-            "grade": challenge_result["grade"],
+            "grade": int(challenge_result["grade"]),
         }
         grade_total += challenge_result["grade"]
         # * Sending get request and saving the response as response object
@@ -183,7 +182,7 @@ def submit_user_assignment(
     body = {
         "submittedAt": submittedAt,
         "status": "submitted",
-        "grade": grade,
+        "grade": int(grade),
     }
     # * Sending get request and saving the response as response object
     try:
@@ -192,6 +191,7 @@ def submit_user_assignment(
         )
         # * Parsing the data as JSON
         data = result.json()
+        print("Chekced successfully", data)
     except ValueError:
         # * Throwing an error if the challenges-service returned an error
         print("Decoding JSON has failed", data)
