@@ -132,7 +132,7 @@ def submit_assignment_results(
     assignment_data: AssignmentData,
     authorization,
 ):
-    submittedAt = str(datetime.datetime.now())
+    submittedAt = str(datetime.datetime.now().isoformat(" ", "seconds"))
     status = "submitted"
     grade_total = 0
     for challenge_result in assignment_results:
