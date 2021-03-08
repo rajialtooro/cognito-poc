@@ -142,13 +142,15 @@ def submit_assignment_results(
             user_id=assignment_data.user_id,
             challenge_id=challenge_result["challenge_id"],
         )
+        grade = int(challenge_result["grade"])
         body = {
             "result": challenge_result["result"],
             "submittedAt": submittedAt,
             "status": status,
-            "grade": int(challenge_result["grade"]),
+            "grade": grade,
         }
-        grade_total += challenge_result["grade"]
+        print(body)
+        grade_total += grade
         # * Sending get request and saving the response as response object
         data = {}
         try:
@@ -179,11 +181,13 @@ def submit_user_assignment(
             user_id=assignment_data.user_id,
         )
     )
+    grade = int(grade)
     body = {
         "submittedAt": submittedAt,
         "status": "submitted",
-        "grade": int(grade),
+        "grade": grade,
     }
+    print(body)
     # * Sending get request and saving the response as response object
     try:
         result = requests.post(
@@ -195,4 +199,4 @@ def submit_user_assignment(
     except ValueError:
         # * Throwing an error if the challenges-service returned an error
         print("Decoding JSON has failed", data)
-        raise SystemExit(sys.exc_info()[0])
+        raise SystemExit(sys.exc_info())
