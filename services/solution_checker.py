@@ -155,7 +155,7 @@ def get_challenge_data(data: ChallengeData):
     URL = (
         settings.challenges_service_url
         + "/challenges/{id}?lang={lang}".format(lang=data.lang, id=data.challengeId)
-        if data is ChallengeData
+        if type(data) is ChallengeData
         else settings.challenges_service_url
         + "/challenges/{id}?lang={lang}".format(
             lang=data["lang"], id=data["challengeId"]
