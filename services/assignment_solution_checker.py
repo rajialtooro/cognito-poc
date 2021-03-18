@@ -189,6 +189,7 @@ def submit_user_assignment(
     }
     print(body)
     # * Sending get request and saving the response as response object
+    data = {}
     try:
         result = requests.post(
             url=URL, params=None, json=body, headers={"Authorization": authorization}
