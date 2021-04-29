@@ -149,7 +149,6 @@ def submit_assignment_results(
             "status": status,
             "grade": grade,
         }
-        print(body)
         grade_total += grade
         # * Sending get request and saving the response as response object
         data = {}
@@ -187,7 +186,6 @@ def submit_user_assignment(
         "status": "submitted",
         "grade": grade,
     }
-    print(body)
     # * Sending get request and saving the response as response object
     data = {}
     try:

@@ -171,7 +171,7 @@ def get_challenge_data(data: ChallengeData):
         # * Throwing an error if the challenges-service returned an error
         print("Decoding JSON has failed", data)
         raise SystemExit(sys.exc_info()[0])
-    return data
+    return data["data"]
 
 
 # * Method to simplify readability of flow
@@ -305,7 +305,6 @@ def combine_solution_and_tests(solution: str, challengeData):
         if "classes" in challengeData
         else solution
     )
-    # print(solution_with_tests)
     return solution_with_tests
 
 
