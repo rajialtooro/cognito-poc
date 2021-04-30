@@ -1,8 +1,11 @@
+import re
+
 import requests
 import json
 import sys
 from config import settings
 from models.ChallengeData import ChallengeData
+from models.constants import correct_csharp_patterns, correct_java_patterns, correct_javascript_patterns
 from utils.sanitize_source_code import clean_comments, remove_strings
 
 
@@ -195,7 +198,7 @@ def get_solution_feedback_and_flags(non_sanitized_solution: str, challengeData):
         result_dict["is_illegal_solution"],
     ) = solution_contains_illegal_words(sol_wo_strings_and_comments, challengeData)
     # * returns the syntax violations
-    result_dict["violations"] = check_spelling(sol_wo_strings_and_comments, challengeData["lang"])["violations"]
+    result_dict["violations"] = check_spelling(sol_wo_strings_and_comments, challengeData["lang"])
     return result_dict
 
 
@@ -234,28 +237,35 @@ def check_spelling(sanitized_code, lang):
     results = {}
     # * if checks the language sent
     if lang == "cs":
-        results = CsharpCheck(sanitized_code)
+        results = lang_spell_check(sanitized_code, correct_csharp_patterns)
+    if lang == "java":
+        results = lang_spell_check(sanitized_code, correct_java_patterns)
+    if lang == "js":
+        results = lang_spell_check(sanitized_code, correct_javascript_patterns)
     return results
 
 
-def CsharpCheck(code):
+def lang_spell_check(code, patterns):
     violations = {"violations" : []}
-    CsharpArr = ["console", "writeline", "readline", "readLine", "Writeline", "writeLine", "Readline", "int.parse"]
-    CorrectArr = ["Console", "WriteLine", "ReadLine", "ReadLine", "WriteLine", "WriteLine", "ReadLine", "int.Parse"]
+    correct_patterns = patterns
     # * checks if any of the values in the CsharpArr are present in the code
-    for i, item in enumerate(CsharpArr):
-        if item in code:
-            index = code.find(item)
-            # * returns the code before the error
-            substring = code[:index]
-            # * counts the number of lines before the error
-            line_num = substring.count('\n')
-            violations["violations"].append(
-                {
-                    "line": line_num+1,
-                    "column": 0,
-                    "id": "'{0}' should be '{1}'".format(item, CorrectArr[i]),
-                })
+    for i, item in enumerate(correct_patterns):
+        matches = re.finditer(item, code, re.IGNORECASE)
+        for m in matches:
+            word = code[m.start():m.end()]
+            if word != correct_patterns[i]:
+                print(word)
+                index = code.find(word)
+                # * returns the code before the error
+                substring = code[:index]
+                # * counts the number of lines before the error
+                line_num = substring.count('\n')
+                violations["violations"].append(
+                    {
+                        "line": line_num+1,
+                        "column": 0,
+                        "id": "'{0}' should be '{1}'".format(word, correct_patterns[i]),
+                    })
     # * if there are violations, the exitCode should be 2
     if len(violations["violations"]) > 0:
         violations["exitCode"] = 2
