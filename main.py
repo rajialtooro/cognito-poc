@@ -34,8 +34,8 @@ def check_solution_controller(
     challenge_data: ChallengeData, authorization: Optional[str] = Header(None)
 ):
     # * getting user id from the headers
-    # userId = get_current_user_id(authorization)
-    return check_solution(challenge_data, "userId")
+    userId = get_current_user_id(authorization)
+    return check_solution(challenge_data, userId)
 
 
 # * POST request to run the assignment checking flow
