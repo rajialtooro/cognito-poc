@@ -5,7 +5,7 @@ import json
 import sys
 from config import settings
 from models.ChallengeData import ChallengeData
-from models.constants import correct_csharp_patterns, correct_java_patterns, correct_javascript_patterns
+from models.constants import correct_patterns
 from utils.sanitize_source_code import clean_comments, remove_strings
 
 
@@ -234,26 +234,20 @@ def solution_contains_approved_words(sanitized_solution: str, challengeData):
 
 
 def check_spelling(sanitized_code, lang):
-    results = {}
-    # * if checks the language sent
-    if lang == "cs":
-        results = lang_spell_check(sanitized_code, correct_csharp_patterns)
-    if lang == "java":
-        results = lang_spell_check(sanitized_code, correct_java_patterns)
-    if lang == "js":
-        results = lang_spell_check(sanitized_code, correct_javascript_patterns)
+    # * sends the correct pattern depending on language
+    results = lang_spell_check(sanitized_code, correct_patterns[lang])
     return results
 
 
 def lang_spell_check(code, patterns):
     violations = {"violations" : []}
-    correct_patterns = patterns
-    # * checks if any of the values in the CsharpArr are present in the code
-    for i, item in enumerate(correct_patterns):
+    correct_lang_patterns = patterns
+    # * checks if any of the values in the correct_patterns are present in the code
+    for i, item in enumerate(correct_lang_patterns):
         matches = re.finditer(item, code, re.IGNORECASE)
         for m in matches:
             word = code[m.start():m.end()]
-            if word != correct_patterns[i]:
+            if word != correct_lang_patterns[i]:
                 print(word)
                 index = code.find(word)
                 # * returns the code before the error
@@ -264,7 +258,7 @@ def lang_spell_check(code, patterns):
                     {
                         "line": line_num+1,
                         "column": 0,
-                        "id": "'{0}' should be '{1}'".format(word, correct_patterns[i]),
+                        "id": "'{0}' should be '{1}'".format(word, correct_lang_patterns[i]),
                     })
     # * if there are violations, the exitCode should be 2
     if len(violations["violations"]) > 0:
