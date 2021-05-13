@@ -235,7 +235,7 @@ def solution_contains_approved_words(sanitized_solution: str, challengeData):
 
 def check_spelling(sanitized_code, lang):
     # * sends the correct pattern depending on language
-    results = lang_spell_check(sanitized_code, correct_patterns[lang])
+    results = lang_spell_check(sanitized_code, correct_patterns[lang] if lang in correct_patterns else [])
     return results
 
 
@@ -248,7 +248,6 @@ def lang_spell_check(code, patterns):
         for m in matches:
             word = code[m.start():m.end()]
             if word != correct_lang_patterns[i]:
-                print(word)
                 index = code.find(word)
                 # * returns the code before the error
                 substring = code[:index]
