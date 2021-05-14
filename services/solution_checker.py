@@ -1,29 +1,37 @@
+import re
+
 import requests
 import json
 import sys
 from config import settings
 from models.ChallengeData import ChallengeData
+from models.constants import correct_patterns
 from utils.sanitize_source_code import clean_comments, remove_strings
 
 
 # * Method to check if the given solution gives the desired output(answer found in DB), to be considered as "solved"
 def check_solution(data: ChallengeData, userId: str) -> str:
     # * Starting with a dictionary that will be filled with the results of the various requests
-    result = {"solved": None, "feedback": {}, "linter": "", "compiler": ""}
+    result = {"solved": None, "feedback": {}, "linter": {}, "compiler": ""}
     # * Default value of the variable that represents if the user successfully solved the challenge
     solved = False
     # * Getting the challenge from the Database based on the ID we received
     challengeData = get_challenge_data(data)
+    # * Checks capitlization
     # * Getting the feedback messages and boolean flags for white/black listed words
     result_dict = get_solution_feedback_and_flags(data.code, challengeData)
-    result["feedback"]["approvedMissing"], result["feedback"]["illegalFound"] = (
+    result["feedback"]["approvedMissing"], result["feedback"]["illegalFound"], result["linter"] = (
         result_dict["missing_msg"],
         result_dict["illegal_msg"],
+        result_dict["violations"],
     )
     is_approved_solution, is_illegal_solution = (
         result_dict["is_approved_solution"],
         result_dict["is_illegal_solution"],
     )
+    # * If there are capitalization violations doesn't compile and analyze code
+    if result_dict["violations"]:
+        return result
     # * Checking if the solution we received contains the "must-have" words for it to be correct
     if is_approved_solution and not is_illegal_solution:
         # * Prepparing the code, by combining the solution, with the test functions(boiler) and extra classes
@@ -70,14 +78,14 @@ def check_solution(data: ChallengeData, userId: str) -> str:
 
 
 def update_linter_line_values(
-    violations, solution_with_tests, challenge_data: ChallengeData, is_main: bool
+        violations, solution_with_tests, challenge_data: ChallengeData, is_main: bool
 ):
     challenge_code_lst = challenge_data.code.split("\n")
     challenge_code_lst_length = len(challenge_code_lst)
     if (
-        challenge_data.lang == "c"
-        or challenge_data.lang == "cs"
-        or challenge_data.lang == "java"
+            challenge_data.lang == "c"
+            or challenge_data.lang == "cs"
+            or challenge_data.lang == "java"
     ) and not is_main:
         sol_start_line = calc_line_diff(challenge_data, solution_with_tests)
         sol_end_line = sol_start_line + challenge_code_lst_length - 1
@@ -98,8 +106,8 @@ def update_linter_line_values(
             sol_end_line = sol_start_line + challenge_code_lst_length - 1
             for violation in list(violations):
                 if (
-                    violation["line"] < sol_start_line
-                    or violation["line"] > sol_end_line
+                        violation["line"] < sol_start_line
+                        or violation["line"] > sol_end_line
                 ):
                     violations.remove(violation)
             for violation in violations:
@@ -157,7 +165,7 @@ def get_challenge_data(data: ChallengeData):
         + "/challenges/{id}?lang={lang}".format(lang=data.lang, id=data.challengeId)
         if type(data) is ChallengeData
         else settings.challenges_service_url
-        + "/challenges/{id}?lang={lang}".format(
+             + "/challenges/{id}?lang={lang}".format(
             lang=data["lang"], id=data["challengeId"]
         )
     )
@@ -189,6 +197,8 @@ def get_solution_feedback_and_flags(non_sanitized_solution: str, challengeData):
         result_dict["illegal_msg"],
         result_dict["is_illegal_solution"],
     ) = solution_contains_illegal_words(sol_wo_strings_and_comments, challengeData)
+    # * returns the syntax violations
+    result_dict["violations"] = check_spelling(sol_wo_strings_and_comments, challengeData["lang"])
     return result_dict
 
 
@@ -205,7 +215,7 @@ def solution_contains_approved_words(sanitized_solution: str, challengeData):
                 if word not in sanitized_solution
             }
             if "white_list" in challengeData
-            and type(challengeData["white_list"]) is list
+               and type(challengeData["white_list"]) is list
             else check_keyword_loopx_challeneges(
                 sanitized_solution, challengeData["white_list"]
             )
@@ -221,6 +231,38 @@ def solution_contains_approved_words(sanitized_solution: str, challengeData):
         feedback_msg,
         not bool(missing_words_set),
     )
+
+
+def check_spelling(sanitized_code, lang):
+    # * sends the correct pattern depending on language
+    results = lang_spell_check(sanitized_code, correct_patterns[lang] if lang in correct_patterns else [])
+    return results
+
+
+def lang_spell_check(code, patterns):
+    violations = {"violations" : []}
+    correct_lang_patterns = patterns
+    # * checks if any of the values in the correct_patterns are present in the code
+    for i, item in enumerate(correct_lang_patterns):
+        matches = re.finditer(item, code, re.IGNORECASE)
+        for m in matches:
+            word = code[m.start():m.end()]
+            if word != correct_lang_patterns[i]:
+                index = code.find(word)
+                # * returns the code before the error
+                substring = code[:index]
+                # * counts the number of lines before the error
+                line_num = substring.count('\n')
+                violations["violations"].append(
+                    {
+                        "line": line_num+1,
+                        "column": 0,
+                        "id": "'{0}' should be '{1}'".format(word, correct_lang_patterns[i]),
+                    })
+    # * if there are violations, the exitCode should be 2
+    if len(violations["violations"]) > 0:
+        violations["exitCode"] = 2
+    return violations
 
 
 # * A methpd to check for keywords in challenges migrated from older platform
