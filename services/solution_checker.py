@@ -30,7 +30,7 @@ def check_solution(data: ChallengeData, userId: str) -> str:
         result_dict["is_illegal_solution"],
     )
     # * If there are capitalization violations doesn't compile and analyze code
-    if result_dict["violations"]:
+    if result["linter"]["violations"]:
         return result
     # * Checking if the solution we received contains the "must-have" words for it to be correct
     if is_approved_solution and not is_illegal_solution:
@@ -391,8 +391,7 @@ def saving_user_challenge_data(data: ChallengeData, userId: str, solved: bool):
     DATA = json.dumps(body)
     data = {}
     # * Setting the URL of the put request to the courses service, which stores the data of the challenge
-    URL = settings.courses_service_url + "update/" + courseID + "/" + challengeID
-
+    URL = settings.courses_service_url + "/update/" + courseID + "/" + challengeID
     try:
         result = requests.put(url=URL, data=DATA)
         data = result.json()
