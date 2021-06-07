@@ -129,8 +129,8 @@ $ git clone https://github.com/altooro/solution-orch.git solution-orchestrator
 $ cd solution-orch
 # make sure you have a virtual environment in the root dir of the service by running
 $ python -m venv env
-# an env folder should be created, that folder contains all the dependecies the service will need
-# before runnng any python command you should make sure your terminal is using the virtual environment
+# an env folder should be created, that folder contains all the dependencies the service will need
+# before running any python command you should make sure your terminal is using the virtual environment
 $ source env/Scripts/activate # for Windows
 $ source env/bin/activate # for Linux
 # now install all the libraries required by the service to the virtual environment by running

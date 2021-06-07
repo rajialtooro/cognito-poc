@@ -8,7 +8,7 @@ from models.AssignmentData import AssignmentData
 from services.solution_checker import check_solution
 from services.assignment_solution_checker import check_assignment_solution
 from services.get_user_id import get_current_user_id
-from API.get_assignment import get_assignemnt
+from API.get_assignment import get_assignment
 
 # * Initial app as a fastapi instance
 app = FastAPI()
@@ -45,7 +45,7 @@ def check_assignment_controller(
     background_tasks: BackgroundTasks,
     authorization: Optional[str] = Header(None),
 ):
-    assignment = get_assignemnt(assignment_data, authorization)
+    assignment = get_assignment(assignment_data, authorization)
     background_tasks.add_task(
         check_assignment_solution, assignment, assignment_data, authorization
     )

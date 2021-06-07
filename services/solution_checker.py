@@ -17,7 +17,7 @@ def check_solution(data: ChallengeData, userId: str) -> str:
     solved = False
     # * Getting the challenge from the Database based on the ID we received
     challengeData = get_challenge_data(data)
-    # * Checks capitlization
+    # * Checks capitalization
     # * Getting the feedback messages and boolean flags for white/black listed words
     result_dict = get_solution_feedback_and_flags(data.code, challengeData)
     result["feedback"]["approvedMissing"], result["feedback"]["illegalFound"], result["linter"] = (
@@ -55,7 +55,7 @@ def check_solution(data: ChallengeData, userId: str) -> str:
                 result["linter"]["violations"],
                 compiler_code,
                 data,
-                challengeData["is_main"],
+                challengeData,
             )
             if result["linter"]["violations"] != None
             else result["linter"]
@@ -78,16 +78,17 @@ def check_solution(data: ChallengeData, userId: str) -> str:
 
 
 def update_linter_line_values(
-        violations, solution_with_tests, challenge_data: ChallengeData, is_main: bool
+        violations, solution_with_tests, user_submission: ChallengeData, complete_challenge_data
 ):
-    challenge_code_lst = challenge_data.code.split("\n")
+    challenge_code_lst = user_submission.code.split("\n")
     challenge_code_lst_length = len(challenge_code_lst)
+    is_main = complete_challenge_data["is_main"]
     if (
-            challenge_data.lang == "c"
-            or challenge_data.lang == "cs"
-            or challenge_data.lang == "java"
+            user_submission.lang == "c"
+            or user_submission.lang == "cs"
+            or user_submission.lang == "java"
     ) and not is_main:
-        sol_start_line = calc_line_diff(challenge_data, solution_with_tests)
+        sol_start_line = calc_line_diff(user_submission, solution_with_tests)
         sol_end_line = sol_start_line + challenge_code_lst_length - 1
         for violation in list(violations):
             if violation["line"] < sol_start_line or violation["line"] > sol_end_line:
@@ -95,8 +96,8 @@ def update_linter_line_values(
         for violation in violations:
             violation["line"] = violation["line"] - sol_start_line
     elif is_main:
-        if " main(" in challenge_data.code.lower() and challenge_data.lang != "c":
-            violations = unnecessary_main_or_class(challenge_data, violations)
+        if " main(" in user_submission.code.lower() and user_submission.lang != "c" and " main(" in complete_challenge_data["tests"].lower():
+            violations = unnecessary_main_or_class(user_submission, violations)
         else:
             sol_start_line = 0
             for idx, line in enumerate(solution_with_tests.split("\n")):
@@ -177,13 +178,12 @@ def get_challenge_data(data: ChallengeData):
         data = result.json()
     except ValueError:
         # * Throwing an error if the challenges-service returned an error
-        print("Decoding JSON has failed", data)
         raise SystemExit(sys.exc_info()[0])
     return data["data"]
 
 
 # * Method to simplify readability of flow
-# * Calls the methods that check if the solution contains all of the white listed words and non of the balck listed words
+# * Calls the methods that check if the solution contains all of the white listed words and non of the black listed words
 def get_solution_feedback_and_flags(non_sanitized_solution: str, challengeData):
     # * Removing any comments or literal strings from the code before looking for the white/black listed words
     sol_wo_comments = clean_comments(non_sanitized_solution, challengeData["lang"])
@@ -265,10 +265,10 @@ def lang_spell_check(code, patterns):
     return violations
 
 
-# * A methpd to check for keywords in challenges migrated from older platform
+# * A method to check for keywords in challenges migrated from older platform
 # * A string of key words might look something like this: "for:while;if;next"
 # * Words that have ":" between them is equal to "or", so one of them is needed to appear
-# * ";" is eqaul to "and" which means all of those should exist within the solution
+# * ";" is equal to "and" which means all of those should exist within the solution
 def check_keyword_loopx_challeneges(code, keywords):
     missing_elements = []
     lowercase_solution = code.lower()
@@ -322,7 +322,7 @@ class HelloWorld
 
 
 def combine_solution_and_tests(solution: str, challengeData):
-    # * For Java "Class" exercises specifically, we need to edit the solution slighlty
+    # * For Java "Class" exercises specifically, we need to edit the solution slightly
     solution = (
         edit_java_class_solution(solution)
         if challengeData["lang"] == "java" and solution.strip().startswith("class")
@@ -377,7 +377,7 @@ def calling_free_code_orchestrator(code: str, lang: str, lint: bool, input: str)
 
 
 def saving_user_challenge_data(data: ChallengeData, userId: str, solved: bool):
-    # * Creating the body of the request with, was the asnwer right(solved), the code user submitted (lastCode)
+    # * Creating the body of the request with, was the answer right(solved), the code user submitted (lastCode)
     body = {
         "solved": solved,
         "lastCode": data.code,
