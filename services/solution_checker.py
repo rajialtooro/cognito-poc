@@ -382,6 +382,7 @@ def saving_user_challenge_data(data: ChallengeData, userId: str, solved: bool):
         "solved": solved,
         "lastCode": data.code,
         "userId": userId,
+        "toSubmit": data.toSubmit,
         "time_spent": data.time_spent,
         "challenge_title": data.title,
     }
