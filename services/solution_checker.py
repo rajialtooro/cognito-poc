@@ -68,7 +68,7 @@ def check_solution(data: ChallengeData, userId: str) -> str:
     # * Adding the "solved" key value to True/False, based on what happend above
     result["solved"] = solved
 
-    if data.toSubmit and data.courseId:
+    if data.courseId:
         saving_user_challenge_data(
             data,
             userId,
