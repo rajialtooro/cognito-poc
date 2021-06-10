@@ -120,7 +120,7 @@
 
 ```json
 {
-  "app_id": "ID of the app"
+  "appId": "ID of the app"
 }
 ```
 

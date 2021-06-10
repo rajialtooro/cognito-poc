@@ -5,7 +5,7 @@ from config import settings
 
 def test_app(app_id: str, token: str):
     response = requests.post(
-        settings.fs_compiler_service_url + "/test", headers={"Authorization": token}
+        settings.fs_compiler_service_url + "/test", headers={"Authorization": token}, data={"appId": app_id}
     )
     result = response.json()
 
