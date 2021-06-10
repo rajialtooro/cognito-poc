@@ -1,4 +1,6 @@
-import requests, json
+from services.test_app import test_app
+import requests
+import json
 from fastapi import FastAPI, Header, BackgroundTasks
 from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +25,8 @@ app.add_middleware(
 )
 
 # * Default path to test if service is UP
+
+
 @app.get("/solution-orch", description="root route of the service")
 def root():
     return "{} Service, env: {}".format(settings.app_name, settings.py_env)
@@ -50,3 +54,17 @@ def check_assignment_controller(
         check_assignment_solution, assignment, assignment_data, authorization
     )
     return {"result": "Solution is being checked"}
+
+# * POST request to run the app testing flow
+
+
+@app.post("/solution-orch/app/test", status_code=200)
+def test_app_controller(
+    app_id: str,
+    authorization: Optional[str] = Header(None),
+):
+    # * getting user id from the headers
+    userId = get_current_user_id(authorization)
+    result = test_app(app_id, authorization)
+    # TODO - store results
+    return result
