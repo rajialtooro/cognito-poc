@@ -392,7 +392,8 @@ def saving_user_challenge_data(data: ChallengeData, userId: str, solved: bool):
     DATA = json.dumps(body)
     data = {}
     # * Setting the URL of the put request to the courses service, which stores the data of the challenge
-    URL = settings.courses_service_url + "/update/" + courseID + "/" + challengeID
+    URL = settings.courses_service_url + "update/" + courseID + "/" + challengeID
+
     try:
         result = requests.put(url=URL, data=DATA)
         data = result.json()
