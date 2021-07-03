@@ -1,29 +1,37 @@
+import re
+
 import requests
 import json
 import sys
 from config import settings
 from models.ChallengeData import ChallengeData
+from models.constants import correct_patterns
 from utils.sanitize_source_code import clean_comments, remove_strings
 
 
 # * Method to check if the given solution gives the desired output(answer found in DB), to be considered as "solved"
 def check_solution(data: ChallengeData, userId: str) -> str:
     # * Starting with a dictionary that will be filled with the results of the various requests
-    result = {"solved": None, "feedback": {}, "linter": "", "compiler": ""}
+    result = {"solved": None, "feedback": {}, "linter": {}, "compiler": ""}
     # * Default value of the variable that represents if the user successfully solved the challenge
     solved = False
     # * Getting the challenge from the Database based on the ID we received
     challengeData = get_challenge_data(data)
+    # * Checks capitalization
     # * Getting the feedback messages and boolean flags for white/black listed words
     result_dict = get_solution_feedback_and_flags(data.code, challengeData)
-    result["feedback"]["approvedMissing"], result["feedback"]["illegalFound"] = (
+    result["feedback"]["approvedMissing"], result["feedback"]["illegalFound"], result["linter"] = (
         result_dict["missing_msg"],
         result_dict["illegal_msg"],
+        result_dict["violations"],
     )
     is_approved_solution, is_illegal_solution = (
         result_dict["is_approved_solution"],
         result_dict["is_illegal_solution"],
     )
+    # * If there are capitalization violations doesn't compile and analyze code
+    if result["linter"]["violations"]:
+        return result
     # * Checking if the solution we received contains the "must-have" words for it to be correct
     if is_approved_solution and not is_illegal_solution:
         # * Prepparing the code, by combining the solution, with the test functions(boiler) and extra classes
@@ -47,7 +55,7 @@ def check_solution(data: ChallengeData, userId: str) -> str:
                 result["linter"]["violations"],
                 compiler_code,
                 data,
-                challengeData["is_main"],
+                challengeData,
             )
             if result["linter"]["violations"] != None
             else result["linter"]
@@ -60,7 +68,7 @@ def check_solution(data: ChallengeData, userId: str) -> str:
     # * Adding the "solved" key value to True/False, based on what happend above
     result["solved"] = solved
 
-    if data.toSubmit and data.courseId:
+    if data.courseId:
         saving_user_challenge_data(
             data,
             userId,
@@ -70,16 +78,17 @@ def check_solution(data: ChallengeData, userId: str) -> str:
 
 
 def update_linter_line_values(
-    violations, solution_with_tests, challenge_data: ChallengeData, is_main: bool
+        violations, solution_with_tests, user_submission: ChallengeData, complete_challenge_data
 ):
-    challenge_code_lst = challenge_data.code.split("\n")
+    challenge_code_lst = user_submission.code.split("\n")
     challenge_code_lst_length = len(challenge_code_lst)
+    is_main = complete_challenge_data["is_main"]
     if (
-        challenge_data.lang == "c"
-        or challenge_data.lang == "cs"
-        or challenge_data.lang == "java"
+            user_submission.lang == "c"
+            or user_submission.lang == "cs"
+            or user_submission.lang == "java"
     ) and not is_main:
-        sol_start_line = calc_line_diff(challenge_data, solution_with_tests)
+        sol_start_line = calc_line_diff(user_submission, solution_with_tests)
         sol_end_line = sol_start_line + challenge_code_lst_length - 1
         for violation in list(violations):
             if violation["line"] < sol_start_line or violation["line"] > sol_end_line:
@@ -87,8 +96,8 @@ def update_linter_line_values(
         for violation in violations:
             violation["line"] = violation["line"] - sol_start_line
     elif is_main:
-        if " main(" in challenge_data.code.lower() and challenge_data.lang != "c":
-            violations = unnecessary_main_or_class(challenge_data, violations)
+        if " main(" in user_submission.code.lower() and user_submission.lang != "c" and " main(" in complete_challenge_data["tests"].lower():
+            violations = unnecessary_main_or_class(user_submission, violations)
         else:
             sol_start_line = 0
             for idx, line in enumerate(solution_with_tests.split("\n")):
@@ -98,8 +107,8 @@ def update_linter_line_values(
             sol_end_line = sol_start_line + challenge_code_lst_length - 1
             for violation in list(violations):
                 if (
-                    violation["line"] < sol_start_line
-                    or violation["line"] > sol_end_line
+                        violation["line"] < sol_start_line
+                        or violation["line"] > sol_end_line
                 ):
                     violations.remove(violation)
             for violation in violations:
@@ -157,7 +166,7 @@ def get_challenge_data(data: ChallengeData):
         + "/challenges/{id}?lang={lang}".format(lang=data.lang, id=data.challengeId)
         if type(data) is ChallengeData
         else settings.challenges_service_url
-        + "/challenges/{id}?lang={lang}".format(
+             + "/challenges/{id}?lang={lang}".format(
             lang=data["lang"], id=data["challengeId"]
         )
     )
@@ -169,13 +178,12 @@ def get_challenge_data(data: ChallengeData):
         data = result.json()
     except ValueError:
         # * Throwing an error if the challenges-service returned an error
-        print("Decoding JSON has failed", data)
         raise SystemExit(sys.exc_info()[0])
     return data["data"]
 
 
 # * Method to simplify readability of flow
-# * Calls the methods that check if the solution contains all of the white listed words and non of the balck listed words
+# * Calls the methods that check if the solution contains all of the white listed words and non of the black listed words
 def get_solution_feedback_and_flags(non_sanitized_solution: str, challengeData):
     # * Removing any comments or literal strings from the code before looking for the white/black listed words
     sol_wo_comments = clean_comments(non_sanitized_solution, challengeData["lang"])
@@ -189,6 +197,8 @@ def get_solution_feedback_and_flags(non_sanitized_solution: str, challengeData):
         result_dict["illegal_msg"],
         result_dict["is_illegal_solution"],
     ) = solution_contains_illegal_words(sol_wo_strings_and_comments, challengeData)
+    # * returns the syntax violations
+    result_dict["violations"] = check_spelling(sol_wo_strings_and_comments, challengeData["lang"])
     return result_dict
 
 
@@ -205,7 +215,7 @@ def solution_contains_approved_words(sanitized_solution: str, challengeData):
                 if word not in sanitized_solution
             }
             if "white_list" in challengeData
-            and type(challengeData["white_list"]) is list
+               and type(challengeData["white_list"]) is list
             else check_keyword_loopx_challeneges(
                 sanitized_solution, challengeData["white_list"]
             )
@@ -223,10 +233,42 @@ def solution_contains_approved_words(sanitized_solution: str, challengeData):
     )
 
 
-# * A methpd to check for keywords in challenges migrated from older platform
+def check_spelling(sanitized_code, lang):
+    # * sends the correct pattern depending on language
+    results = lang_spell_check(sanitized_code, correct_patterns[lang] if lang in correct_patterns else [])
+    return results
+
+
+def lang_spell_check(code, patterns):
+    violations = {"violations" : []}
+    correct_lang_patterns = patterns
+    # * checks if any of the values in the correct_patterns are present in the code
+    for i, item in enumerate(correct_lang_patterns):
+        matches = re.finditer(item, code, re.IGNORECASE)
+        for m in matches:
+            word = code[m.start():m.end()]
+            if word != correct_lang_patterns[i]:
+                index = code.find(word)
+                # * returns the code before the error
+                substring = code[:index]
+                # * counts the number of lines before the error
+                line_num = substring.count('\n')
+                violations["violations"].append(
+                    {
+                        "line": line_num+1,
+                        "column": 0,
+                        "id": "'{0}' should be '{1}'".format(word, correct_lang_patterns[i]),
+                    })
+    # * if there are violations, the exitCode should be 2
+    if len(violations["violations"]) > 0:
+        violations["exitCode"] = 2
+    return violations
+
+
+# * A method to check for keywords in challenges migrated from older platform
 # * A string of key words might look something like this: "for:while;if;next"
 # * Words that have ":" between them is equal to "or", so one of them is needed to appear
-# * ";" is eqaul to "and" which means all of those should exist within the solution
+# * ";" is equal to "and" which means all of those should exist within the solution
 def check_keyword_loopx_challeneges(code, keywords):
     missing_elements = []
     lowercase_solution = code.lower()
@@ -280,7 +322,7 @@ class HelloWorld
 
 
 def combine_solution_and_tests(solution: str, challengeData):
-    # * For Java "Class" exercises specifically, we need to edit the solution slighlty
+    # * For Java "Class" exercises specifically, we need to edit the solution slightly
     solution = (
         edit_java_class_solution(solution)
         if challengeData["lang"] == "java" and solution.strip().startswith("class")
@@ -335,11 +377,12 @@ def calling_free_code_orchestrator(code: str, lang: str, lint: bool, input: str)
 
 
 def saving_user_challenge_data(data: ChallengeData, userId: str, solved: bool):
-    # * Creating the body of the request with, was the asnwer right(solved), the code user submitted (lastCode)
+    # * Creating the body of the request with, was the answer right(solved), the code user submitted (lastCode)
     body = {
         "solved": solved,
         "lastCode": data.code,
         "userId": userId,
+        "toSubmit": data.toSubmit,
         "time_spent": data.time_spent,
         "challenge_title": data.title,
     }

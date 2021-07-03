@@ -6,7 +6,7 @@ from models.Assignment import Assignment
 from models.AssignmentData import AssignmentData
 
 # * Route: /courses-svc/courseId/assignments/assignmentId
-def get_assignemnt(assignment_data: AssignmentData, authorization) -> Assignment:
+def get_assignment(assignment_data: AssignmentData, authorization) -> Assignment:
     # * using a .env file makes sure that the dev/prod environments are called respectively
     URL = (
         settings.courses_service_url

@@ -109,6 +109,30 @@
 }
 ```
 
+## <a name="test"></a>Test an app:
+
+### Request:
+
+- Type: <b>POST</b>
+- Route: /solution-orch/app/test
+- Headers: Auth headers required
+- Body:
+
+```json
+{
+  "appId": "ID of the app"
+}
+```
+
+### Result(example):
+
+```json
+{
+  "exitCode": 0, // the exitCode 0 = good, anything else = bad
+  "logs": "returned logs from the container"
+}
+```
+
 ## Technologies!
 
 - The service will be written in [Python](https://python.org/) 3.6+.
@@ -129,8 +153,8 @@ $ git clone https://github.com/altooro/solution-orch.git solution-orchestrator
 $ cd solution-orch
 # make sure you have a virtual environment in the root dir of the service by running
 $ python -m venv env
-# an env folder should be created, that folder contains all the dependecies the service will need
-# before runnng any python command you should make sure your terminal is using the virtual environment
+# an env folder should be created, that folder contains all the dependencies the service will need
+# before running any python command you should make sure your terminal is using the virtual environment
 $ source env/Scripts/activate # for Windows
 $ source env/bin/activate # for Linux
 # now install all the libraries required by the service to the virtual environment by running
@@ -149,4 +173,5 @@ FREE_ORCH_URL="url to the coding orchestrator"
 CHALLENGES_SERVICE_URL="URL to the challenges service"
 AUTH_SERVICE_URL="url to the authentication service"
 COURSES_SERVICE_URL="url to the courses service"
+FS_COMPILER_SERVICE_URL="url to the full-stack compiler"
 ```
