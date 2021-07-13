@@ -186,7 +186,6 @@ def get_challenge_data(data: ChallengeData):
 # * Calls the methods that check if the solution contains all of the white listed words and non of the black listed words
 def get_solution_feedback_and_flags(non_sanitized_solution: str, challengeData):
     # * Removing any comments or literal strings from the code before looking for the white/black listed words
-    
     sol_wo_comments = clean_comments(non_sanitized_solution, challengeData["lang"])
     sol_wo_strings_and_comments = remove_strings(sol_wo_comments)
     result_dict = {}
