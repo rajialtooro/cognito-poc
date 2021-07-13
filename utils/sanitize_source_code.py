@@ -74,7 +74,7 @@ def clean_comments_python(source):
         last_col = end_col
         last_lineno = end_line
     lst = out.split("\n")
-    del lst[0]
+    # del lst[0]
     return "\n".join(lst)
 
 
