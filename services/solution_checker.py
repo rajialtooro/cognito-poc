@@ -186,6 +186,7 @@ def get_challenge_data(data: ChallengeData):
 # * Calls the methods that check if the solution contains all of the white listed words and non of the black listed words
 def get_solution_feedback_and_flags(non_sanitized_solution: str, challengeData):
     # * Removing any comments or literal strings from the code before looking for the white/black listed words
+    
     sol_wo_comments = clean_comments(non_sanitized_solution, challengeData["lang"])
     sol_wo_strings_and_comments = remove_strings(sol_wo_comments)
     result_dict = {}
@@ -247,7 +248,8 @@ def lang_spell_check(code, patterns):
         matches = re.finditer(item, code, re.IGNORECASE)
         for m in matches:
             word = code[m.start():m.end()]
-            if word != correct_lang_patterns[i]:
+            correct_statement = correct_lang_patterns[i]
+            if word not in correct_statement:
                 index = code.find(word)
                 # * returns the code before the error
                 substring = code[:index]
@@ -257,7 +259,8 @@ def lang_spell_check(code, patterns):
                     {
                         "line": line_num+1,
                         "column": 0,
-                        "id": "'{0}' should be '{1}'".format(word, correct_lang_patterns[i]),
+                        # * Removing any regext symbols from the string before returning it
+                        "id": "'{0}' should be '{1}'".format(word, re.sub(r'[^\w]', '',  correct_statement)),
                     })
     # * if there are violations, the exitCode should be 2
     if len(violations["violations"]) > 0:
@@ -338,8 +341,14 @@ def combine_solution_and_tests(solution: str, challengeData):
             else solution
         )
     elif "is_main" in challengeData and challengeData["is_main"]:
-        solution_with_tests = solution_with_tests.replace("{{tests}}", solution)
-        solution_with_tests = solution_with_tests.replace("{{code}}", "")
+        if challengeData["lang"] != "python":
+            solution_with_tests = solution_with_tests.replace("{{tests}}", solution)
+            solution_with_tests = solution_with_tests.replace("{{code}}", "")
+        else:
+            # * Handling the is_main python exercises created from the front-end UI
+            solution_with_tests = solution_with_tests.replace("{{tests}}", challengeData["tests"] if "tests" in challengeData else "")
+            solution_with_tests = solution_with_tests.replace("{{code}}", solution)
+            solution_with_tests = solution_with_tests.replace("{{classes}}", challengeData["classes"] if "classes" in challengeData else "")
 
     solution_with_tests = solution_with_tests.replace("{{code}}", solution)
     solution_with_tests = (
