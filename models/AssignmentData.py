@@ -6,7 +6,7 @@ class UserChallengeData(BaseModel):
     time_spent: int
     coding_time: int
     time_out_tab: int
-    error: str   
+    error: Optional[str] = None   
 
 class AssignmentData(BaseModel):
     course_id: str
