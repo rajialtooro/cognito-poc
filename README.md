@@ -97,7 +97,25 @@
 {
   "course_id": "UID of course",
   "assignment_id": "UID of assignment",
-  "user_id": "UUID of user"
+  "user_id": "UUID of user",
+  "challenges_data": {
+    "challenge_id1":
+      {
+         "time_spent": 10000,
+          "coding_time":  1000,
+          "time_out_tab": 1000, 
+           "error": "STRING", 
+           "lang": "cs|python|js"
+      },
+      "challenge_id1":
+      {
+         "time_spent": 10000,
+          "coding_time":  1000,
+          "time_out_tab": 1000, 
+           "error": "STRING", 
+           "lang": "cs|python|js"
+      }
+  }
 }
 ```
 
