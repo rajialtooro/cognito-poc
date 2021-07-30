@@ -135,7 +135,10 @@ def submit_assignment_results(
     submittedAt = str(datetime.datetime.utcnow().isoformat("T", "seconds"))
     status = "submitted"
     grade_total = 0
+    challenges_analytics = assignment_data.challenges_data
     for challenge_result in assignment_results:
+        current_chall_id = challenge_result["challenge_id"]
+        challenge_analytics = challenges_analytics[current_chall_id]
         URL = settings.courses_service_url + "/{course_id}/assignments/{assignment_id}/{user_id}/{challenge_id}/submit".format(
             course_id=assignment_data.course_id,
             assignment_id=assignment_data.assignment_id,
@@ -148,7 +151,13 @@ def submit_assignment_results(
             "submittedAt": submittedAt,
             "status": status,
             "grade": grade,
+            "time_spent": challenge_analytics["time_spent"],
+            "coding_time": challenge_analytics["coding_time"],
+            "time_out_tab": challenge_analytics["time_out_tab"],
+            
         }
+        if challenge_analytics.error is not None:
+            body["error"] = challenge_analytics["error"]
         grade_total += grade
         # * Sending get request and saving the response as response object
         data = {}
