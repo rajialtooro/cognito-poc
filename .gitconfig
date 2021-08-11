@@ -1,0 +1,6 @@
+[core]
+	sshCommand = "ssh -i C:/Users/rajih/.ssh/raji_altooro"
+
+[user]
+	name = rajialtooro
+	email = raji@altooro.com
