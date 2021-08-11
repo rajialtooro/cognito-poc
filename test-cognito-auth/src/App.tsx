@@ -27,7 +27,6 @@ const authPage = () => {
             headers: {
               Authorization: await getIdToken(),
             },
-            mode: "no-cors",
           })
             .then((data) => data.text())
             .then(console.log)
