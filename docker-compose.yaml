@@ -1,9 +1,0 @@
-version: "3"
-services:
-  challenge-checker:
-    build: .
-    ports:
-      - "80:80"
-    command: bash ./run.prod.sh
-    env_file:
-      - .env
