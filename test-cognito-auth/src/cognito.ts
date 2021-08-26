@@ -1,4 +1,7 @@
-import * as AmazonCognitoIdentity from "amazon-cognito-identity-js";
+//@ts-nocheck
+// import * as AmazonCognitoIdentity from "amazon-cognito-identity-js";
+//@ts-ignore
+import * as AmazonCognitoIdentity from "amazon-cognito-identity-js/dist/amazon-cognito-identity";
 
 let userPool: AmazonCognitoIdentity.CognitoUserPool;
 
@@ -10,6 +13,28 @@ export function configure(
 
 function checkPool() {
   if (!userPool) throw new Error("Cognito User Pool has not been configured");
+}
+
+export async function updateUserAttributes(
+  attributes: Record<string, string>
+): Promise<string | undefined> {
+  return new Promise((resolve, reject) => {
+    const currentUser = userPool.getCurrentUser();
+    if (!currentUser) return reject("not signed in");
+    currentUser.updateAttributes(
+      Object.entries(attributes).map(
+        ([k, v]) =>
+          new AmazonCognitoIdentity.CognitoUserAttribute({ Name: k, Value: v })
+      ),
+      function (err, result) {
+        if (err) {
+          reject(err.message || JSON.stringify(err));
+          return;
+        }
+        resolve(result);
+      }
+    );
+  });
 }
 
 export async function getSession(): Promise<AmazonCognitoIdentity.CognitoUserSession> {

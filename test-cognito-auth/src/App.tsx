@@ -1,5 +1,11 @@
 import React, { useEffect } from "react";
-import { getIdToken, getSession, signIn } from "./cognito";
+import {
+  getIdToken,
+  getSession,
+  getValidSessionUser,
+  signIn,
+  updateUserAttributes,
+} from "./cognito";
 
 const authPage = () => {
   useEffect(() => {
@@ -9,7 +15,9 @@ const authPage = () => {
     <div>
       <button
         onClick={() => {
-          signIn("username", "password").then(console.log).catch(console.log);
+          signIn("rajihawa", "Raji123Hawa!")
+            .then(console.log)
+            .catch(console.log);
         }}
       >
         login
@@ -22,8 +30,17 @@ const authPage = () => {
         token
       </button>
       <button
+        onClick={() => {
+          updateUserAttributes({ address: "INDIVIDUAL" })
+            .then(console.log)
+            .catch(console.log);
+        }}
+      >
+        make individual
+      </button>
+      <button
         onClick={async () => {
-          fetch("https://api.development.altooro.com", {
+          fetch("https://journeys.development.altooro.com/journey/543632", {
             headers: {
               Authorization: await getIdToken(),
             },

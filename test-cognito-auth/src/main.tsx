@@ -6,7 +6,7 @@ import { configure } from "./cognito";
 import * as AmazonCognitoIdentity from "amazon-cognito-identity-js";
 
 configure({
-  ClientId: "70su5u8ctonipbcjdkggghgqim",
+  ClientId: "68lpd255gkpsmfb97jfh00c6e7",
   UserPoolId: "eu-central-1_4R0OY2MHG",
   Storage: new AmazonCognitoIdentity.CookieStorage({
     domain: "localhost",
